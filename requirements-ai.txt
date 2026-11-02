@@ -1,0 +1,2 @@
+# Optional dependency used by the NEU course tutor to extract text from uploaded PDFs.
+pypdf>=6.21,<7

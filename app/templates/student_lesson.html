@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}M10.S1 - Học tập Trực tuyến | {{ lesson.title if lesson else 'Khai thác Bài học' }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-trail">
+  <a href="{{ url_for('curriculum.view_curriculum') }}"><i class="fa-solid fa-house-chimney"></i> Học viện</a>
+  <span>/</span>
+  <a href="{{ url_for('curriculum.view_curriculum') }}">Khảo thí & Học liệu Số M10</a>
+  <span>/</span>
+  <span>M10.S1 - Khai thác Bài học Trực tuyến & Telemetry Live</span>
+</div>
+
+{% if lesson %}
+<div class="course-banner-card" style="margin-bottom: 20px;">
+  <div class="course-banner-left">
+    <div class="banner-badges-row">
+      <span class="badge-code">{{ lesson.lesson_number }}</span>
+      <span class="mat-pill mat-pill-blue">Thời lượng: {{ lesson.duration_minutes }} phút</span>
+      <span class="mat-pill mat-pill-green"><i class="fa-solid fa-circle"></i> Đang phát trực tuyến</span>
+    </div>
+    <h1 class="course-main-title">{{ lesson.title }}</h1>
+  </div>
+  <div class="course-banner-right">
+    <a href="{{ url_for('curriculum.view_curriculum') }}" class="btn-secondary">
+      <i class="fa-solid fa-arrow-left"></i> Quay lại Đề cương
+    </a>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+
+  <!-- Video Player with Live Dynamic Watermark Overlay -->
+  <div>
+    <div style="position: relative; width: 100%; height: 440px; background-color: #0f172a; border-radius: var(--radius-lg); overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md);">
+
+      <!-- Video Placeholder Graphic -->
+      <div style="text-align: center; color: #94a3b8;">
+        <i class="fa-solid fa-circle-play" style="font-size: 64px; color: var(--primary); margin-bottom: 12px; cursor: pointer;"></i>
+        <div style="font-size: 14px; font-weight: 700; color: #f1f5f9;">Video_BaiHoc_{{ lesson.lesson_number }}.mp4</div>
+        <div style="font-size: 12px; margin-top: 4px;">Độ phân giải 1080p Full HD • Băng thông mạng: 12.4 Mbps</div>
+      </div>
+
+      <!-- DYNAMIC FLOATING WATERMARK (DRM Anti-leak) -->
+      <div style="position: absolute; top: 25%; left: 15%; transform: rotate(-15deg); color: rgba(255, 255, 255, 0.22); font-size: 16px; font-weight: 800; pointer-events: none; user-select: none; font-family: monospace; letter-spacing: 2px;">
+        WATERMARK ID: {{ current_user.user_code if current_user else 'SV-2024-8849' }} • {{ current_user.full_name if current_user else 'LMS M10' }}
+      </div>
+      <div style="position: absolute; bottom: 30%; right: 18%; transform: rotate(-15deg); color: rgba(255, 255, 255, 0.18); font-size: 15px; font-weight: 800; pointer-events: none; user-select: none; font-family: monospace; letter-spacing: 2px;">
+        WATERMARK ID: {{ current_user.user_code if current_user else 'SV-2024-8849' }} • 127.0.0.1 LMS M10
+      </div>
+
+      <!-- Live Telemetry Status Bar Overlay on Player -->
+      <div style="position: absolute; top: 14px; left: 16px; display: flex; align-items: center; gap: 8px; background: rgba(0, 0, 0, 0.75); padding: 4px 12px; border-radius: var(--radius-full); font-size: 11px; color: #ef4444; font-weight: 800;">
+        <i class="fa-solid fa-circle" style="animation: pulse 1.5s infinite;"></i> REC TELEMETRY LIVE
+      </div>
+
+      <div style="position: absolute; bottom: 14px; left: 16px; right: 16px; background: rgba(15, 23, 42, 0.85); padding: 8px 16px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; color: #ffffff; font-size: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <i class="fa-solid fa-play" style="color: var(--primary);"></i>
+          <span>18:45 / {{ lesson.duration_minutes }}:00 (Tiến độ: 76.5%)</span>
+        </div>
+        <div>
+          <span>Watermark Session: #WTR-{{ current_user.user_code if current_user else 'ONLINE' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side Column: Checklist & Materials -->
+  <div style="display: flex; flex-direction: column; gap: 20px;">
+    <!-- Lesson Materials Quick Download -->
+    <div class="lesson-main-card">
+      <h3 style="font-size: 14px; font-weight: 800; color: var(--text-main); margin-bottom: 12px;">
+        <i class="fa-solid fa-paperclip" style="color: var(--primary);"></i> Tài liệu bài học đính kèm
+      </h3>
+      {% for m in materials %}
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-light);">
+        <span style="font-size: 12px; font-weight: 600; color: var(--text-main);">{{ m.title }}</span>
+        <a href="{{ m.file_url }}" target="_blank" class="btn-soft-primary" style="font-size: 10px;">Xem online</a>
+      </div>
+      {% else %}
+      <div style="font-size: 12px; color: var(--text-muted); font-style: italic; padding: 12px 0;">
+        Chưa có tài liệu đính kèm nào cho bài học này.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% else %}
+<div class="empty-state-card" style="padding: 60px 20px; text-align: center; background: #ffffff; border-radius: var(--radius-md); border: 1px dashed var(--border-color); margin-top: 20px;">
+  <i class="fa-solid fa-laptop-code" style="font-size: 48px; color: var(--text-subtle); margin-bottom: 16px; display: block;"></i>
+  <h2 style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">Chưa có bài học nào được xuất bản</h2>
+  <p style="font-size: 13px; color: var(--text-muted); max-width: 480px; margin: 0 auto 20px;">
+    Hiện tại hệ thống chưa có nội dung bài giảng video số hóa trực tuyến. Vui lòng quay lại danh mục đề cương để xem các thông tin học phần khác.
+  </p>
+  <a href="{{ url_for('curriculum.view_curriculum') }}" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+    <i class="fa-solid fa-arrow-left"></i> Quay lại Đề cương
+  </a>
+</div>
+{% endif %}
+{% endblock %}

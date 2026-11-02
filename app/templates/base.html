@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}NEU LMS - Phân hệ M10 Khảo Thí Số{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Styling for User Header & Role Badges */
+    .user-profile-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      padding: 4px 8px;
+      border-radius: var(--radius-md);
+      transition: background-color 0.15s;
+    }
+    .user-profile-header:hover {
+      background-color: #f1f5f9;
+    }
+    .user-role-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: var(--radius-full);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+    }
+    .badge-student {
+      background-color: #ecfdf5;
+      color: #059669;
+      border: 1px solid #a7f3d0;
+    }
+    .badge-lecturer {
+      background-color: #f5f3ff;
+      color: #7c3aed;
+      border: 1px solid #ddd6fe;
+    }
+    .badge-admin {
+      background-color: #fffbeb;
+      color: #d97706;
+      border: 1px solid #fde68a;
+    }
+    .btn-logout-header {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--danger);
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-logout-header:hover {
+      background: #fee2e2;
+      border-color: #fca5a5;
+    }
+    .avatar-role-placeholder {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .empty-state-card {
+      background: #ffffff;
+      border: 1px dashed var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 40px 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP NAVBAR -->
+  <header class="top-navbar">
+    <a href="{{ url_for('curriculum.view_curriculum') }}" class="brand-wrapper">
+      <img src="{{ url_for('static', filename='images/neu-logo.png') }}" alt="Logo Đại học Kinh tế Quốc dân" class="neu-brand-logo">
+      <div class="brand-titles">
+        <span class="brand-main">NEU LMS</span>
+        <span class="brand-sub">PHÂN HỆ M10 • KHẢO THÍ SỐ</span>
+      </div>
+    </a>
+
+    <div class="navbar-center">
+      <div class="search-input-wrapper">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" class="global-search-input" placeholder="Tìm kiếm đề cương, ngân hàng câu hỏi, học liệu số...">
+      </div>
+    </div>
+
+    <div class="navbar-right">
+      {% if current_user %}
+        <div class="notification-area">
+          <button id="notification-bell" class="notif-btn" type="button" title="Thông báo" aria-label="Thông báo" aria-expanded="false" aria-controls="notification-panel">
+            <i class="fa-regular fa-bell"></i>
+            <span id="notification-count" class="notif-count" hidden>0</span>
+          </button>
+          <section id="notification-panel" class="notification-panel" hidden aria-label="Danh sách thông báo">
+            <header class="notification-panel-header">
+              <strong>Thông báo</strong>
+              <button id="notification-read-all" class="notification-read-all" type="button">Đánh dấu đã đọc</button>
+            </header>
+            <div id="notification-list" class="notification-list">
+              <p class="notification-empty">Đang tải thông báo…</p>
+            </div>
+          </section>
+        </div>
+
+        <!-- User Profile -->
+        <div class="user-profile-header">
+          {% if current_user.avatar_url %}
+            <img src="{{ current_user.avatar_url }}" alt="Avatar" class="avatar-circle">
+          {% else %}
+            <div class="avatar-role-placeholder {% if current_user.role == 'STUDENT' %}badge-student{% elif current_user.role == 'LECTURER' %}badge-lecturer{% else %}badge-admin{% endif %}">
+              {% if current_user.role == 'STUDENT' %}
+                <i class="fa-solid fa-user-graduate"></i>
+              {% elif current_user.role == 'LECTURER' %}
+                <i class="fa-solid fa-chalkboard-user"></i>
+              {% else %}
+                <i class="fa-solid fa-shield-halved"></i>
+              {% endif %}
+            </div>
+          {% endif %}
+          <div class="user-name-title">
+            <span class="user-full-name">{{ current_user.academic_title or '' }} {{ current_user.full_name }}</span>
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+              {% if current_user.role == 'STUDENT' %}
+                <span class="user-role-badge badge-student"><i class="fa-solid fa-user-graduate"></i> Sinh viên</span>
+              {% elif current_user.role == 'LECTURER' %}
+                <span class="user-role-badge badge-lecturer"><i class="fa-solid fa-chalkboard-user"></i> Giảng viên</span>
+              {% elif current_user.role == 'ACADEMIC_ADMIN' %}
+                <span class="user-role-badge badge-admin"><i class="fa-solid fa-clipboard-check"></i> Cán bộ Quản lý</span>
+              {% elif current_user.role == 'ADMIN' %}
+                <span class="user-role-badge" style="background: rgba(225, 29, 72, 0.15); color: #e11d48; border-color: rgba(225, 29, 72, 0.3);"><i class="fa-solid fa-shield-halved"></i> Quản trị viên</span>
+              {% else %}
+                <span class="user-role-badge">{{ current_user.role }}</span>
+              {% endif %}
+              <span style="font-size: 11px; color: var(--text-subtle);">#{{ current_user.user_code }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logout Button -->
+        <a href="{{ url_for('auth.logout') }}" class="btn-logout-header" title="Đăng xuất khỏi hệ thống">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span>Đăng xuất</span>
+        </a>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}" class="btn-primary" style="height: 34px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập
+        </a>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="app-container">
+    <!-- LEFT SIDEBAR: PHÂN TÁCH GIAO DIỆN THEO ROLE -->
+    <aside class="left-sidebar">
+
+      {% if current_user and current_user.role == 'ADMIN' %}
+        <!-- ================= GIAO DIỆN DÀNH CHO QUẢN TRỊ VIÊN HỆ THỐNG ================= -->
+        <div>
+          <div class="sidebar-section-title">QUẢN TRỊ HỆ THỐNG & TÀI KHOẢN (ADMIN)</div>
+          <ul class="sidebar-nav-list">
+            <li>
+              <a href="{{ url_for('admin.manage_users') }}" class="sidebar-nav-link {% if current_nav == 'admin_users' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-users-gear"></i></span>
+                <span>Tài khoản & Phân quyền (4.1)</span>
+              </a>
+            </li>
+            <li>
+              <a href="{{ url_for('admin.system_config') }}" class="sidebar-nav-link {% if current_nav == 'admin_system' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-server"></i></span>
+                <span>Cấu hình & Vận hành (4.2)</span>
+              </a>
+            </li>
+            <li>
+              <a href="{{ url_for('telemetry.view_telemetry') }}" class="sidebar-nav-link {% if current_nav == 'telemetry' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
+                <span>Telemetry & Giám sát Live</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="sidebar-section-title">GIÁM SÁT HỌC THUẬT & HỌC LIỆU</div>
+          <ul class="sidebar-nav-list">
+            <li>
+              <a href="{{ url_for('approval.view_approvals') }}" class="sidebar-nav-link {% if current_nav == 'approvals' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-regular fa-clipboard"></i></span>
+                <span>Phê duyệt & DRM (M10.M1)</span>
+              </a>
+            </li>
+            <li>
+              <a href="{{ url_for('curriculum.view_curriculum') }}" class="sidebar-nav-link {% if current_nav == 'curriculum' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-book-open"></i></span>
+                <span>Các lớp học phần</span>
+              </a>
+            </li>
+            <li>
+              <a href="{{ url_for('students.view_students') }}" class="sidebar-nav-link {% if current_nav == 'students' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-users"></i></span>
+                <span>Hồ sơ Sinh viên & Chuyên cần</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="sidebar-section-title">HỖ TRỢ & BẢO MẬT</div>
+          <ul class="sidebar-nav-list">
+            <li>
+              <a href="{{ url_for('support.view_support') }}" class="sidebar-nav-link {% if current_nav == 'support' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-headset"></i></span>
+                <span>Hỗ trợ & Chatbot AI 24/7</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+      {% elif current_user and current_user.role == 'STUDENT' %}
+        <!-- ================= GIAO DIỆN DÀNH CHO SINH VIÊN ================= -->
+        <div>
+          <div class="sidebar-section-title">HỌC TẬP & BÀI GIẢNG</div>
+          <ul class="sidebar-nav-list">
+            <li>
+              <a href="{{ url_for('curriculum.view_curriculum') }}" class="sidebar-nav-link {% if current_nav == 'curriculum' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-book-open"></i></span>
+                <span>Lớp học phần</span>
+              </a>
+            </li>
+            <li>
+              <a href="{{ url_for('students.view_students') }}" class="sidebar-nav-link {% if current_nav == 'students' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-chart-user"></i></span>
+                <span>Tiến trình & Kết quả Học tập</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="sidebar-section-title">HỖ TRỢ & HỎI ĐÁP</div>
+          <ul class="sidebar-nav-list">
+            <li>
+              <a href="{{ url_for('support.view_support') }}" class="sidebar-nav-link {% if current_nav == 'support' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-headset"></i></span>
+                <span>Hỗ trợ & Chatbot AI 24/7</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+      {% elif current_user and current_user.role == 'ACADEMIC_ADMIN' %}
+        <!-- ================= GIAO DIỆN DÀNH CHO CÁN BỘ QUẢN LÝ ================= -->
+        <div>
+          <div class="sidebar-section-title">QUẢN LÝ</div>
+          <ul class="sidebar-nav-list">
+            <li>
+              <a href="{{ url_for('approval.view_approvals') }}" class="sidebar-nav-link {% if current_nav == 'approvals' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-regular fa-clipboard"></i></span>
+                <span>Phê duyệt</span>
+              </a>
+            </li>
+            <li>
+              <a href="{{ url_for('support.view_support') }}" class="sidebar-nav-link {% if current_nav == 'support' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-headset"></i></span>
+                <span>Hỗ trợ người học</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+      {% else %}
+        <!-- ================= GIAO DIỆN DÀNH CHO GIẢNG VIÊN (MẶC ĐỊNH) ================= -->
+        <div>
+          <div class="sidebar-section-title">HỌC TẬP & BÀI GIẢNG</div>
+          <ul class="sidebar-nav-list">
+            <li>
+              <a href="{{ url_for('curriculum.view_curriculum') }}" class="sidebar-nav-link {% if current_nav == 'curriculum' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-book-open"></i></span>
+                <span>Đề cương & Bài học</span>
+              </a>
+            </li>
+            <li>
+              <a href="{{ url_for('shared_repo.view_shared_repo') }}" class="sidebar-nav-link {% if current_nav == 'shared_repo' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-folder-open"></i></span>
+                <span>Học liệu môn học</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+        <div>
+          <div class="sidebar-section-title">HỖ TRỢ</div>
+          <ul class="sidebar-nav-list">
+            <li>
+              <a href="{{ url_for('support.view_support') }}" class="sidebar-nav-link {% if current_nav == 'support' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-headset"></i></span>
+                <span>Hỗ trợ người học</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      {% endif %}
+
+    </aside>
+
+    <!-- MAIN BODY -->
+    <main class="main-content">
+      <!-- Flash Messages inside main content if any -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-messages" aria-live="polite">
+            {% for category, message in messages %}
+              <div class="flash-message flash-{{ category }}" role="{% if category == 'danger' %}alert{% else %}status{% endif %}">
+                <i class="flash-message-icon fa-solid {% if category == 'danger' %}fa-circle-xmark{% elif category == 'warning' %}fa-triangle-exclamation{% elif category == 'success' %}fa-circle-check{% else %}fa-circle-info{% endif %}" aria-hidden="true"></i>
+                <span class="flash-message-text">{{ message }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="global-toast" class="toast-notice"></div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

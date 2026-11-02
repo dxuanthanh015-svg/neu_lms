@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}M10.M1 - Thẩm định & Phê duyệt Học liệu Số{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-trail">
+  <a href="{{ url_for('curriculum.view_curriculum') }}"><i class="fa-solid fa-house-chimney"></i> Học viện</a>
+  <span>/</span>
+  <span>M10.M1 - Quy trình Phê duyệt Học liệu & Giám sát SLA</span>
+</div>
+
+<div class="course-banner-card" style="margin-bottom: 24px;">
+  <div class="course-banner-left">
+    <div class="banner-badges-row">
+      <span class="badge-code">M10.G3</span>
+      <span class="mat-pill mat-pill-orange"><i class="fa-solid fa-stopwatch"></i> SLA Cam kết 28 Giờ</span>
+      <span class="badge-status-teaching"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> Hội đồng kiểm duyệt</span>
+    </div>
+    <h1 class="course-main-title">Hồ sơ Thẩm định & Phê duyệt Bản quyền DRM</h1>
+    <p class="course-sub-desc">
+      Quy trình thẩm định 4 bước: Tải lên $\rightarrow$ Thiết lập DRM & Ký số $\rightarrow$ Thẩm định chuyên môn Bộ môn $\rightarrow$ Công bố kho dùng chung.
+    </p>
+  </div>
+</div>
+<section class="lesson-main-card" style="margin:0 0 24px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">
+    <div><h2 style="margin:0;color:var(--text-main);font-size:17px;"><i class="fa-solid fa-book-open" style="color:var(--primary);"></i> Học liệu môn học chờ duyệt</h2><p style="margin:5px 0 0;color:var(--text-muted);font-size:12px;">Chỉ tài liệu được cán bộ quản lý phê duyệt mới xuất hiện trong các lớp học phần của sinh viên.</p></div>
+    <span class="tab-counter-badge">{{ pending_course_materials|length }} chờ duyệt</span>
+  </div>
+  {% for material in pending_course_materials %}
+  <article style="padding:16px;margin-bottom:12px;border:1px solid var(--border-light);border-radius:12px;background:#fff;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+      <div style="min-width:0;flex:1;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:7px;"><span class="badge-code">{{ material.course.course_code }}</span><span class="mat-pill mat-pill-orange">Chờ phê duyệt</span></div>
+        <h3 style="margin:0 0 5px;color:var(--text-main);font-size:15px;">{{ material.title }}</h3>
+        <div style="font-size:12px;color:var(--text-muted);">Tệp: {{ material.file_name }} · {{ (material.file_size_bytes / 1024)|round|int }} KB · Người tải: {{ material.uploader.full_name if material.uploader else 'Tài khoản đã ngừng hoạt động' }} · {{ material.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
+        {% if material.description %}<p style="margin:8px 0 0;white-space:pre-wrap;font-size:13px;color:var(--text-body);">{{ material.description }}</p>{% endif %}
+      </div>
+      <a href="{{ url_for('shared_repo.download_course_material', material_id=material.id) }}" class="btn-secondary" target="_blank" rel="noopener" style="text-decoration:none;"><i class="fa-solid fa-eye"></i> Xem tệp</a>
+    </div>
+    {% if can_review_course_materials %}
+    <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);">
+      <form method="POST" action="{{ url_for('approval.approve_course_material', material_id=material.id) }}" style="display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:8px;align-items:center;min-width:0;">
+        <input name="comment" class="form-input" placeholder="Ý kiến duyệt (không bắt buộc)" style="width:100%;min-width:0;height:42px;">
+        <button type="submit" class="btn-primary" style="display:flex;align-items:center;justify-content:center;gap:7px;width:220px;height:42px;white-space:nowrap;"><i class="fa-solid fa-check"></i> Phê duyệt và công bố</button>
+      </form>
+      <form method="POST" action="{{ url_for('approval.reject_course_material', material_id=material.id) }}" style="display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:8px;align-items:center;min-width:0;">
+        <input name="comment" class="form-input" placeholder="Lý do từ chối" required style="width:100%;min-width:0;height:42px;">
+        <button type="submit" class="btn-secondary" style="display:flex;align-items:center;justify-content:center;gap:7px;width:220px;height:42px;color:#b91c1c;white-space:nowrap;"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+      </form>
+    </div>
+    {% endif %}
+  </article>
+  {% else %}
+  <div style="padding:28px;text-align:center;border:1px dashed var(--border-color);border-radius:10px;color:var(--text-muted);">Không có học liệu môn học nào đang chờ duyệt.</div>
+  {% endfor %}
+</section>
+<div style="display: flex; flex-direction: column; gap: 20px;">
+  <div style="font-size: 15px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+    <i class="fa-solid fa-file-shield" style="color: var(--primary);"></i>
+    <span>Hồ Sơ Thẩm Định Học Liệu Số Toàn Viện</span>
+  </div>
+
+  {% for dos in dossiers %}
+  <div class="lesson-main-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+      <div>
+        <div style="font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 2px;">
+          MÃ HỒ SƠ: {{ dos.id }} • NỘP BỞI: {{ dos.submitter.full_name }}
+        </div>
+        <h2 style="font-size: 17px; font-weight: 800; color: var(--text-main);">
+          {{ dos.material.title }}
+        </h2>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        {% if dos.status == 'APPROVED_PUBLISHED' %}
+          <span class="mat-pill mat-pill-green"><i class="fa-solid fa-circle-check"></i> ĐÃ PHÊ DUYỆT & CÔNG BỐ</span>
+        {% elif dos.status == 'ACTION_REQUIRED' %}
+          <span class="mat-pill mat-pill-orange"><i class="fa-solid fa-circle-exclamation"></i> CẦN SỬA ĐỔI (ACTION REQUIRED)</span>
+        {% else %}
+          <span class="mat-pill mat-pill-blue"><i class="fa-solid fa-clock"></i> ĐANG THẨM ĐỊNH</span>
+        {% endif %}
+
+        <span class="mat-pill mat-pill-gray">
+          <i class="fa-solid fa-hourglass-half"></i> SLA: Còn {{ dos.sla_remaining_hours }}h / {{ dos.sla_deadline_hours }}h
+        </span>
+      </div>
+    </div>
+
+    <!-- 4-Step Visual Progress Bar -->
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+      <div style="padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--success-border); background-color: var(--success-bg);">
+        <div style="font-size: 10px; font-weight: 700; color: var(--success);">BƯỚC 1: HOÀN TẤT</div>
+        <div style="font-size: 12px; font-weight: 700; color: var(--text-main);">1. Tải lên tệp gốc</div>
+      </div>
+      <div style="padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--success-border); background-color: var(--success-bg);">
+        <div style="font-size: 10px; font-weight: 700; color: var(--success);">BƯỚC 2: HOÀN TẤT</div>
+        <div style="font-size: 12px; font-weight: 700; color: var(--text-main);">2. Gắn Watermark & DRM</div>
+      </div>
+      <div style="padding: 10px; border-radius: var(--radius-sm); border: 1px solid {% if dos.current_step >= 3 %}var(--primary-border){% else %}var(--border-color){% endif %}; background-color: {% if dos.current_step >= 3 %}var(--primary-light){% else %}#f8fafc{% endif %};">
+        <div style="font-size: 10px; font-weight: 700; color: var(--primary);">BƯỚC 3: HIỆN TẠI</div>
+        <div style="font-size: 12px; font-weight: 700; color: var(--text-main);">3. Bộ môn thẩm định</div>
+      </div>
+      <div style="padding: 10px; border-radius: var(--radius-sm); border: 1px solid {% if dos.current_step == 4 %}var(--success-border){% else %}var(--border-color){% endif %}; background-color: {% if dos.current_step == 4 %}var(--success-bg){% else %}#f8fafc{% endif %};">
+        <div style="font-size: 10px; font-weight: 700; color: {% if dos.current_step == 4 %}var(--success){% else %}var(--text-subtle){% endif %};">BƯỚC 4: KHO DÙNG CHUNG</div>
+        <div style="font-size: 12px; font-weight: 700; color: {% if dos.current_step == 4 %}var(--text-main){% else %}var(--text-muted){% endif %};">4. Công bố toàn trường</div>
+      </div>
+    </div>
+
+    <!-- Reviewer Comment Box -->
+    {% if dos.reviewer_comment %}
+    <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
+      <div style="font-size: 12px; font-weight: 800; color: #92400e; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-comment-dots"></i>
+        <span>Ý kiến Đánh giá của Cán bộ Thẩm định ({{ dos.reviewer.full_name if dos.reviewer else 'Cán bộ quản lý' }}):</span>
+      </div>
+      <p style="font-size: 13px; color: #78350f; line-height: 1.5;">
+        "{{ dos.reviewer_comment }}"
+      </p>
+    </div>
+    {% endif %}
+
+    <!-- Action Buttons -->
+    <div style="display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+      {% if dos.status != 'APPROVED_PUBLISHED' %}
+        <form action="{{ url_for('approval.request_change_dossier', dossier_id=dos.id) }}" method="POST" style="display: inline;">
+          <button type="submit" class="btn btn-outline" style="height: 38px; color: #d97706; border-color: #fcd34d;">
+            <i class="fa-solid fa-pen-to-square"></i> Yêu cầu chỉnh sửa
+          </button>
+        </form>
+
+        <form action="{{ url_for('approval.reject_dossier', dossier_id=dos.id) }}" method="POST" style="display: inline;">
+          <button type="submit" class="btn btn-outline" style="height: 38px; color: #dc2626; border-color: #fca5a5;">
+            <i class="fa-solid fa-ban"></i> Từ chối hồ sơ
+          </button>
+        </form>
+
+        <form action="{{ url_for('approval.approve_dossier', dossier_id=dos.id) }}" method="POST" style="display: inline;">
+          <button type="submit" class="btn-primary" style="height: 38px;">
+            <i class="fa-solid fa-stamp"></i> Phê duyệt & Công bố Kho Dùng Chung
+          </button>
+        </form>
+      {% else %}
+        <span class="btn-secondary" style="cursor: default; color: var(--success);"><i class="fa-solid fa-check"></i> Hồ sơ đã hoàn tất phê duyệt</span>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state-card" style="text-align: center; padding: 48px 24px; background: #ffffff; border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
+    <i class="fa-regular fa-folder-open" style="font-size: 40px; color: var(--text-subtle); margin-bottom: 12px; display: block;"></i>
+    <h3 style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">Chưa có hồ sơ kiểm duyệt nào</h3>
+    <p style="font-size: 13px; color: var(--text-muted);">Hiện tại chưa có hồ sơ nào được gửi lên để thẩm định bản quyền hoặc chuyên môn.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

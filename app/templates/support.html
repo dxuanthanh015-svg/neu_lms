@@ -1,0 +1,774 @@
+{% extends "base.html" %}
+
+{% block title %}{% if current_user.role in ['ACADEMIC_ADMIN', 'LECTURER'] %}Hỗ trợ người học | LMS NEU{% else %}Phân hệ Hỗ trợ Người học & Chatbot AI 24/7 | LMS M10{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+  .ai-tutor-layout { display:grid; grid-template-columns:minmax(0,1.8fr) minmax(280px,.9fr); gap:18px; align-items:stretch; }
+  .ai-chat-card { display:flex; flex-direction:column; min-height:650px; }
+  .ai-context-bar { display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:12px; border:1px solid #dbeafe; border-radius:12px; background:linear-gradient(135deg,#f8fbff,#f0f6ff); }
+  .ai-context-select { min-width:0; flex:1; height:40px; padding:0 12px; border:1px solid var(--border-color); border-radius:9px; background:#fff; color:var(--text-main); font:inherit; font-size:13px; font-weight:600; }
+  .ai-quick-question { width:100%; min-height:46px; padding:10px 12px; text-align:left; line-height:1.45; white-space:normal; border-radius:10px; transition:transform .15s,border-color .15s,background .15s; }
+  .ai-quick-question:hover { transform:translateY(-1px); border-color:var(--primary); background:#f5f8ff; }
+  .ai-chat-message { display:flex; gap:10px; align-items:flex-start; }
+  .ai-chat-bubble { max-width:min(92%,800px); padding:13px 16px; border-radius:14px; font-size:13px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .ai-chat-message.user { justify-content:flex-end; }
+  .ai-chat-message.user .ai-chat-bubble { color:white; background:var(--primary); border-bottom-right-radius:4px; }
+  .ai-chat-message.assistant .ai-chat-bubble { background:#f0fdfa; border:1px solid #99f6e4; color:var(--text-body); border-bottom-left-radius:4px; white-space:normal; }
+  .ai-chat-bubble p { margin:0 0 9px; }
+  .ai-chat-bubble p:last-child, .ai-chat-bubble ul:last-child, .ai-chat-bubble ol:last-child, .ai-chat-bubble h3:last-child { margin-bottom:0; }
+  .ai-chat-bubble h3 { margin:13px 0 6px; color:var(--text-main); font-size:14px; line-height:1.4; }
+  .ai-chat-bubble ul, .ai-chat-bubble ol { margin:5px 0 10px; padding-left:23px; }
+  .ai-chat-bubble li { margin:3px 0; padding-left:2px; }
+  .ai-chat-bubble strong { color:var(--text-main); font-weight:700; }
+  .ai-chat-bubble code { padding:1px 5px; border:1px solid #dbe4ee; border-radius:5px; background:#f8fafc; color:#0f766e; font:12px ui-monospace,SFMono-Regular,Consolas,monospace; }
+  .ai-markdown-table-wrap { max-width:100%; margin:9px 0; overflow-x:auto; border:1px solid #dbe5ee; border-radius:8px; background:#fff; }
+  .ai-markdown-table { width:100%; border-collapse:collapse; font-size:12px; line-height:1.55; }
+  .ai-markdown-table th, .ai-markdown-table td { min-width:90px; padding:8px 10px; border-bottom:1px solid #e8eef4; text-align:left; vertical-align:top; }
+  .ai-markdown-table th { background:#f1f5f9; color:var(--text-main); font-weight:700; }
+  .ai-markdown-table tr:last-child td { border-bottom:0; }
+  .ticket-reply-panel { margin-top:14px; padding:18px; border:1px solid #dbe5f0; border-radius:14px; background:linear-gradient(145deg,#fff 0%,#f8fbff 100%); }
+  .ticket-reply-heading { display:flex; align-items:flex-start; gap:11px; margin-bottom:12px; }
+  .ticket-reply-icon { display:grid; place-items:center; width:36px; height:36px; flex:0 0 36px; border-radius:11px; color:#fff; background:var(--primary); }
+  .ticket-reply-textarea { width:100%; min-height:105px; padding:12px 14px; border:1px solid #d6e0eb; border-radius:10px; outline:none; resize:vertical; color:var(--text-main); font:inherit; line-height:1.55; }
+  .ticket-reply-textarea:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+  .ticket-reply-footer { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px; }
+  @media(max-width:650px) { .ticket-reply-footer { align-items:stretch; flex-direction:column; } .ticket-reply-footer .btn-primary { width:100%; } }
+  @media (max-width:900px) { .ai-tutor-layout { grid-template-columns:1fr; } .ai-chat-card { min-height:600px; } }
+</style>
+<div class="breadcrumb-trail">
+  <a href="{{ url_for('curriculum.view_curriculum') }}"><i class="fa-solid fa-house-chimney"></i> Học viện</a>
+  <span>/</span>
+  <span>Phân hệ Hỗ trợ Người học (Helpdesk & AI Tutor 24/7)</span>
+</div>
+
+<!-- COURSE BANNER CARD -->
+<div class="course-banner-card" style="margin-bottom: 24px;">
+  <div class="course-banner-left">
+    <div class="banner-badges-row">
+      <span class="badge-code">M10.H1</span>
+      {% if current_user.role not in ['ACADEMIC_ADMIN', 'LECTURER'] %}<span class="mat-pill mat-pill-teal"><i class="fa-solid fa-robot"></i> Trợ lý Chatbot AI 24/7</span>{% endif %}
+      <span class="mat-pill mat-pill-green"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> Cổng hỗ trợ trực tuyến</span>
+    </div>
+    <h1 class="course-main-title">{% if current_user.role in ['ACADEMIC_ADMIN', 'LECTURER'] %}Hỗ trợ người học{% else %}Trung Tâm Hỗ Trợ Người Học & Trợ Lý Môn Học{% endif %}</h1>
+    <p class="course-sub-desc">{% if current_user.role in ['ACADEMIC_ADMIN', 'LECTURER'] %}
+      Tiếp nhận, theo dõi và phản hồi các yêu cầu hỗ trợ chung của người học.
+    {% else %}
+      Gửi yêu cầu hỗ trợ hoặc hỏi trợ lý AI về môn học, bài học và tài liệu của lớp học phần đang chọn.
+    {% endif %}
+    </p>
+  </div>
+  <div class="course-banner-right">
+    <div class="banner-actions">
+      {% if current_user and current_user.role == 'STUDENT' %}
+        <button class="btn-primary" onclick="openNewTicketModal('LECTURER')"><i class="fa-solid fa-chalkboard-user"></i> Hỏi giảng viên</button>
+        <button class="btn-secondary" {% if primary_academic_manager %}onclick="openNewTicketModal('ACADEMIC_ADMIN')"{% else %}disabled title="Cần đúng một cán bộ quản lý đang hoạt động"{% endif %}><i class="fa-solid fa-user-tie"></i> Hỏi cán bộ quản lý</button>
+        {% if not primary_academic_manager %}<small class="mat-pill mat-pill-orange">Kênh này cần đúng một cán bộ quản lý đang hoạt động</small>{% endif %}
+      {% endif %}
+      {% if current_user.role not in ['ACADEMIC_ADMIN', 'LECTURER'] %}<button class="btn-secondary" onclick="switchSupportTab('chatbot')">
+        <i class="fa-solid fa-comments"></i> Chat với AI Tutor
+      </button>{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- SUPPORT SUB-NAV TABS -->
+<div class="course-subnav-tabs" style="margin-bottom: 20px;">
+  <button id="tab-btn-tickets" class="subnav-tab-item active" onclick="switchSupportTab('tickets')">
+    <i class="fa-solid fa-ticket"></i> Danh sách Phiếu hỗ trợ <span class="tab-counter-badge">{{ tickets|length }}</span>
+  </button>
+  {% if current_user.role not in ['ACADEMIC_ADMIN', 'LECTURER'] %}<button id="tab-btn-chatbot" class="subnav-tab-item" onclick="switchSupportTab('chatbot')">
+    <i class="fa-solid fa-wand-magic-sparkles"></i> Trợ lý Ảo AI Tutor Trực tuyến 24/7
+  </button>{% endif %}
+</div>
+
+<!-- ================= TAB 1: TICKETS VIEW ================= -->
+<div id="support-view-tickets" class="support-tab-content">
+  <div style="display: grid; grid-template-columns: 360px 1fr; gap: 20px;">
+    
+    <!-- LEFT: TICKETS LIST & FILTERS -->
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <!-- Filter Bar -->
+      <div class="lesson-main-card" style="padding: 14px;">
+        <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">LỌC THEO TRẠNG THÁI</div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <a href="{{ url_for('support.view_support', status='ALL') }}" class="mat-pill {% if selected_status == 'ALL' %}mat-pill-blue{% else %}mat-pill-gray{% endif %}">Tất cả</a>
+          <a href="{{ url_for('support.view_support', status='NEW') }}" class="mat-pill {% if selected_status == 'NEW' %}mat-pill-orange{% else %}mat-pill-gray{% endif %}">Mới</a>
+          <a href="{{ url_for('support.view_support', status='OPEN') }}" class="mat-pill {% if selected_status == 'OPEN' %}mat-pill-orange{% else %}mat-pill-gray{% endif %}">Đã tiếp nhận</a>
+          <a href="{{ url_for('support.view_support', status='ASSIGNED') }}" class="mat-pill {% if selected_status == 'ASSIGNED' %}mat-pill-orange{% else %}mat-pill-gray{% endif %}">Đã phân công</a>
+          <a href="{{ url_for('support.view_support', status='IN_PROGRESS') }}" class="mat-pill {% if selected_status == 'IN_PROGRESS' %}mat-pill-purple{% else %}mat-pill-gray{% endif %}">Đang giải quyết</a>
+          <a href="{{ url_for('support.view_support', status='PENDING_USER') }}" class="mat-pill {% if selected_status == 'PENDING_USER' %}mat-pill-orange{% else %}mat-pill-gray{% endif %}">Chờ sinh viên</a>
+          <a href="{{ url_for('support.view_support', status='RESOLVED') }}" class="mat-pill {% if selected_status == 'RESOLVED' %}mat-pill-green{% else %}mat-pill-gray{% endif %}">Đã giải đáp</a>
+          <a href="{{ url_for('support.view_support', status='CLOSED') }}" class="mat-pill {% if selected_status == 'CLOSED' %}mat-pill-gray{% else %}mat-pill-gray{% endif %}">Đã đóng</a>
+        </div>
+      </div>
+
+      <!-- Tickets Card List -->
+      <div style="display: flex; flex-direction: column; gap: 10px; max-height: 680px; overflow-y: auto;">
+        {% for t in tickets %}
+        <div class="ticket-item-card {% if active_ticket and active_ticket.id == t.id %}ticket-active{% endif %}" onclick="window.location.href='{{ url_for('support.view_support', ticket_id=t.id, status=selected_status) }}'" style="background-color: #ffffff; border: 1px solid {% if active_ticket and active_ticket.id == t.id %}var(--primary){% else %}var(--border-color){% endif %}; border-radius: var(--radius-md); padding: 14px; cursor: pointer; transition: all 0.15s; position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; font-weight: 800; color: var(--primary);">{{ t.ticket_code }}</span>
+            {% if t.status == 'RESOLVED' %}
+              <span class="mat-pill mat-pill-green" style="font-size: 10px; padding: 2px 6px;"><i class="fa-solid fa-check"></i> Đã giải đáp</span>
+            {% elif t.status == 'CLOSED' %}
+              <span class="mat-pill mat-pill-gray" style="font-size: 10px; padding: 2px 6px;">Đã đóng</span>
+            {% elif t.status == 'NEW' %}
+              <span class="mat-pill mat-pill-orange" style="font-size: 10px; padding: 2px 6px;">Mới</span>
+            {% elif t.status == 'OPEN' %}
+              <span class="mat-pill mat-pill-orange" style="font-size: 10px; padding: 2px 6px;">Đã tiếp nhận</span>
+            {% elif t.status == 'ASSIGNED' %}
+              <span class="mat-pill mat-pill-orange" style="font-size: 10px; padding: 2px 6px;">Đã phân công</span>
+            {% elif t.status == 'PENDING_USER' %}
+              <span class="mat-pill mat-pill-orange" style="font-size: 10px; padding: 2px 6px;">Chờ sinh viên</span>
+            {% elif t.status == 'IN_PROGRESS' %}
+              <span class="mat-pill mat-pill-purple" style="font-size: 10px; padding: 2px 6px;"><i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý</span>
+            {% else %}
+              <span class="mat-pill mat-pill-orange" style="font-size: 10px; padding: 2px 6px;"><i class="fa-solid fa-clock"></i> Chờ tiếp nhận</span>
+            {% endif %}
+          </div>
+
+          <h4 style="font-size: 13px; font-weight: 700; color: var(--text-main); line-height: 1.4; margin-bottom: 8px;">
+            {{ t.title }}
+          </h4>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text-muted);">
+            <span><i class="fa-regular fa-user"></i> {{ t.student.full_name }}</span>
+            <span>{{ t.created_at.strftime('%d/%m %H:%M') }}</span>
+          </div>
+
+          <div style="margin-top: 8px; display: flex; gap: 6px;">
+            <span class="mat-pill mat-pill-gray" style="font-size: 10px;">{{ t.category }}</span>
+            {% if t.priority == 'HIGH' or t.priority == 'URGENT' %}
+              <span class="mat-pill mat-pill-orange" style="font-size: 10px;">Khẩn cấp</span>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 13px;">
+          <i class="fa-regular fa-comments" style="font-size: 24px; color: var(--text-subtle); margin-bottom: 8px; display: block;"></i>
+          Chưa có yêu cầu hỗ trợ nào.
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- RIGHT: ACTIVE TICKET DETAILS & CONVERSATION -->
+    <div>
+      {% if active_ticket %}
+      <div class="lesson-main-card">
+        <!-- Ticket Header Details -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); margin-bottom: 16px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+              <span class="badge-code">{{ active_ticket.ticket_code }}</span>
+              <span class="mat-pill mat-pill-blue">{{ active_ticket.category }}</span>
+              <span class="mat-pill mat-pill-gray">Môn học: {{ active_ticket.course.course_code if active_ticket.course else 'Chung' }}</span>
+              {% if active_ticket.priority == 'HIGH' or active_ticket.priority == 'URGENT' %}
+                <span class="mat-pill mat-pill-orange">Ưu tiên cao</span>
+              {% endif %}
+            </div>
+            <h2 style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">
+              {{ active_ticket.title }}
+            </h2>
+            <div style="font-size: 12px; color: var(--text-muted);">
+              Người gửi: <strong>{{ active_ticket.student.full_name }}</strong> ({{ active_ticket.student.user_code }}) • Thời gian: {{ active_ticket.created_at.strftime('%H:%M:%S %d/%m/%Y') }}<br>
+              Người xử lý: {{ active_ticket.assigned_staff.full_name if active_ticket.assigned_staff else 'Chưa phân công' }} · Hạn phản hồi: {{ active_ticket.sla_due_at.strftime('%d/%m/%Y %H:%M') if active_ticket.sla_due_at else 'Chưa đặt' }}
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px;">
+            {% if current_user and current_user.role in ['ACADEMIC_ADMIN', 'ADMIN', 'LECTURER'] and active_ticket.status != 'RESOLVED' and active_ticket.status != 'CLOSED' %}
+              {% if active_ticket.status in ['NEW', 'OPEN', 'ASSIGNED'] %}<button class="btn-secondary" onclick="updateTicketStatus('{{ active_ticket.id }}','OPEN')">Tiếp nhận</button>{% endif %}
+              <button class="btn-secondary" onclick="updateTicketStatus('{{ active_ticket.id }}','IN_PROGRESS')">Bắt đầu xử lý</button>
+              <button class="btn-secondary" onclick="updateTicketStatus('{{ active_ticket.id }}','PENDING_USER')">Chờ sinh viên</button>
+              <button class="btn-primary" onclick="resolveSupportTicket('{{ active_ticket.id }}')">Hoàn tất xử lý</button>
+            {% elif current_user and current_user.role == 'STUDENT' and active_ticket.status == 'RESOLVED' %}
+              <button class="btn-secondary" onclick="closeSupportTicket('{{ active_ticket.id }}')">Xác nhận đóng</button>
+              <button class="btn-secondary" onclick="reopenSupportTicket('{{ active_ticket.id }}')">Mở lại</button>
+            {% elif current_user and current_user.role == 'STUDENT' and active_ticket.status == 'CLOSED' %}
+              <button class="btn-secondary" onclick="reopenSupportTicket('{{ active_ticket.id }}')">Mở lại yêu cầu</button>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Conversation Timeline -->
+        <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; max-height: 480px; overflow-y: auto; padding-right: 8px;">
+          {% for msg in active_ticket.messages %}
+          {% if not msg.is_internal or current_user.role != 'STUDENT' %}
+          <div style="display: flex; gap: 12px; align-items: flex-start; {% if msg.is_ai_bot %}background-color: #f0fdfa; border: 1px solid #99f6e4; padding: 14px; border-radius: var(--radius-md);{% elif msg.sender_user_id == active_ticket.student_user_id %}background-color: #f8fafc; border: 1px solid var(--border-light); padding: 14px; border-radius: var(--radius-md);{% else %}background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 14px; border-radius: var(--radius-md);{% endif %}">
+            
+            <div style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; {% if msg.is_ai_bot %}background-color: #0d9488; color: #ffffff;{% elif msg.sender_user_id == active_ticket.student_user_id %}background-color: var(--primary); color: #ffffff;{% else %}background-color: #2563eb; color: #ffffff;{% endif %}">
+              {% if msg.is_ai_bot %}
+                <i class="fa-solid fa-robot"></i>
+              {% elif msg.sender_user_id == active_ticket.student_user_id %}
+                <i class="fa-solid fa-user-graduate"></i>
+              {% else %}
+                <i class="fa-solid fa-chalkboard-user"></i>
+              {% endif %}
+            </div>
+
+            <div style="flex: 1;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 12px; font-weight: 800; color: var(--text-main);">
+                  {% if msg.is_ai_bot %}
+                    EduLLM AI Support Assistant (24/7)
+                  {% elif msg.sender %}
+                    {{ msg.sender.full_name }} ({{ msg.sender.role }})
+                  {% else %}
+                    Hệ thống LMS
+                  {% endif %}
+                </span>
+                <span style="font-size: 11px; color: var(--text-subtle);">
+                  {{ msg.created_at.strftime('%H:%M %d/%m/%Y') }}
+                </span>
+              </div>
+
+              <div style="font-size: 13px; color: var(--text-body); line-height: 1.6; white-space: pre-wrap;">{{ msg.message }}</div>
+              {% if msg.is_internal %}<span class="mat-pill mat-pill-orange">Trao đổi nội bộ</span>{% endif %}
+              {% for attachment in msg.attachments %}<a href="{{ url_for('api.download_ticket_attachment', attachment_id=attachment.id) }}" class="mat-pill mat-pill-blue" target="_blank">{{ attachment.file_name }}</a>{% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+
+        <!-- Lecturer response composer -->
+        {% if current_user.role in ['LECTURER', 'ACADEMIC_ADMIN'] and active_ticket.status not in ['RESOLVED', 'CLOSED'] %}
+        <div class="ticket-reply-panel">
+          <div class="ticket-reply-heading">
+            <span class="ticket-reply-icon"><i class="fa-solid fa-reply"></i></span>
+            <div>
+              <div style="font-size:14px;font-weight:800;color:var(--text-main);">{{ 'Phản hồi sinh viên về môn học' if current_user.role == 'LECTURER' else 'Phản hồi yêu cầu hỗ trợ chung' }}</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">{{ 'Trao đổi nội dung học liệu, bài tập hoặc vấn đề của môn học.' if current_user.role == 'LECTURER' else 'Trả lời sinh viên hoặc hướng dẫn bước xử lý tiếp theo.' }}</div>
+            </div>
+          </div>
+          <textarea id="reply-message-text" class="ticket-reply-textarea" placeholder="{{ 'Nhập phản hồi liên quan đến môn học...' if current_user.role == 'LECTURER' else 'Nhập nội dung phản hồi cho sinh viên...' }}"></textarea>
+          <input id="reply-files" type="file" multiple style="margin:10px 0;">
+          <div class="ticket-reply-footer">
+            <label style="font-size:12px;color:var(--text-muted);"><input id="reply-internal" type="checkbox"> Ghi chú nội bộ (sinh viên không nhìn thấy)</label>
+            <button class="btn-primary" onclick="sendTicketReply('{{ active_ticket.id }}')"><i class="fa-solid fa-paper-plane"></i> Gửi phản hồi</button>
+          </div>
+        </div>
+        {% endif %}
+        {% if current_user.role == 'STUDENT' and active_ticket.status == 'PENDING_USER' %}
+        <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:14px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px;"><i class="fa-solid fa-circle-info" style="color:var(--primary);"></i> Bổ sung thông tin theo yêu cầu</div>
+          <textarea id="supplemental-message-text" rows="3" style="width:100%;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:10px;font-family:inherit;margin-bottom:10px;" placeholder="Nhập thông tin người xử lý đang cần..."></textarea>
+          <input id="supplemental-files" type="file" multiple style="margin-bottom:10px;">
+          <button class="btn-primary" onclick="sendSupplementalInfo('{{ active_ticket.id }}')"><i class="fa-solid fa-paper-plane"></i> Gửi thông tin bổ sung</button>
+        </div>
+        {% endif %}
+        {% if current_user and current_user.role == 'STUDENT' and active_ticket.status == 'CLOSED' and not active_ticket.rated_at %}
+        <div class="lesson-main-card" style="padding:14px;margin-top:14px;">
+          <strong>Đánh giá chất lượng hỗ trợ</strong>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;">
+            <label>Tốc độ <select id="rating-speed"><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select> ★</label>
+            <label>Thái độ <select id="rating-attitude"><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select> ★</label>
+            <input id="rating-comment" placeholder="Nhận xét (không bắt buộc)">
+            <button class="btn-primary" onclick="rateSupportTicket('{{ active_ticket.id }}')">Gửi đánh giá</button>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="lesson-main-card" style="text-align: center; padding: 48px 24px;">
+        <i class="fa-solid fa-inbox" style="font-size: 48px; color: var(--border-color); margin-bottom: 16px;"></i>
+        <h3 style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">Chưa chọn phiếu hỗ trợ nào</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Vui lòng chọn một phiếu ở danh sách bên trái hoặc tạo phiếu mới.</p>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<!-- ================= TAB 2: AI TUTOR CHATBOT VIEW ================= -->
+{% if current_user.role not in ['ACADEMIC_ADMIN', 'LECTURER'] %}<div id="support-view-chatbot" class="support-tab-content" style="display: none;">
+  <div class="ai-tutor-layout">
+    
+    <!-- Left Chat Conversation Box -->
+    <div class="lesson-main-card ai-chat-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border-light); margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 38px; height: 38px; border-radius: 50%; background-color: #0d9488; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+            <i class="fa-solid fa-robot"></i>
+          </div>
+          <div>
+            <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin: 0;">Trợ lý AI môn học NEU</h3>
+            <span style="font-size: 11px; color: var(--success); font-weight: 600;"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> Trả lời dựa trên học liệu môn đang chọn</span>
+          </div>
+        </div>
+        <span class="mat-pill mat-pill-teal"><i class="fa-solid fa-lock"></i> Ngữ cảnh môn học</span>
+      </div>
+
+      <div class="ai-context-bar">
+        <i class="fa-solid fa-book-open" style="color:var(--primary);"></i>
+        <label for="ai-course-context" style="font-size:12px;font-weight:700;color:var(--text-body);white-space:nowrap;">Môn học</label>
+        <select id="ai-course-context" class="ai-context-select" onchange="changeAiCourseContext(this.value)" {% if not courses %}disabled{% endif %}>
+          {% for course in courses %}<option value="{{ course.id }}" {% if selected_course and selected_course.id == course.id %}selected{% endif %}>{{ course.course_code }} · {{ course.title_vi }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <!-- Messages Stream -->
+      <div id="ai-chat-messages-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 8px; margin-bottom: 16px;">
+        <!-- Welcome Message -->
+        <div style="display: flex; gap: 10px; align-items: flex-start; background-color: #f0fdfa; border: 1px solid #99f6e4; padding: 12px; border-radius: var(--radius-md);">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #0d9488; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">
+            <i class="fa-solid fa-robot"></i>
+          </div>
+          <div style="font-size: 13px; color: var(--text-body); line-height: 1.5;">
+            {% if selected_course %}Xin chào! Mình có thể giải đáp về <strong>{{ selected_course.course_code }} · {{ selected_course.title_vi }}</strong> dựa trên thông tin môn học, giảng viên, lớp học phần, các tuần và học liệu đã tải lên. Mình không tra cứu môn hoặc tài liệu khác.{% else %}Tài khoản hiện chưa có môn học được phân quyền. Hãy mở trợ lý từ một lớp học phần đã được ghi danh hoặc giảng dạy.{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Input Area -->
+      <div style="display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--border-light); padding-top: 12px;">
+        <input type="text" id="ai-chat-input" style="flex: 1; height: 42px; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0 14px; font-size: 13px;" placeholder="Hỏi về bài học, nội dung tuần hoặc học liệu môn học..." onkeydown="if(event.key==='Enter') sendAiChatMessage()" {% if not selected_course %}disabled{% endif %}>
+        <button id="ai-chat-send" class="btn-primary" style="height: 42px; padding: 0 18px;" onclick="sendAiChatMessage()" {% if not selected_course %}disabled{% endif %}>
+          <i class="fa-solid fa-paper-plane"></i> Gửi câu hỏi
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Quick Prompts & Knowledge Base -->
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div class="lesson-main-card">
+        <h4 style="font-size: 14px; font-weight: 800; color: var(--text-main); margin-bottom: 12px;">
+          <i class="fa-solid fa-bolt" style="color: #eab308;"></i> Câu hỏi gợi ý nhanh
+        </h4>
+        <div id="ai-quick-questions" style="display:grid;gap:9px;">
+          <div style="padding:12px;border:1px dashed var(--border-color);border-radius:10px;font-size:12px;color:var(--text-muted);">{% if selected_course %}Đang tạo câu hỏi theo môn học...{% else %}Chọn môn học để tạo câu hỏi gợi ý.{% endif %}</div>
+        </div>
+      </div>
+
+      <div class="lesson-main-card" style="background-color: #f8fafc;">
+        <h4 style="font-size: 13px; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">
+          <i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i> Phạm vi trợ lý
+        </h4>
+        <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0;">
+          Trợ lý chỉ nhận dữ liệu của môn đang chọn: thông tin môn học, giảng viên, lớp, tuần học và học liệu giảng viên tải lên. Câu hỏi ngoài phạm vi hoặc chưa có dữ liệu sẽ được báo rõ.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endif %}
+
+<!-- ================= MODAL: TẠO PHIẾU HỖ TRỢ MỚI ================= -->
+<div id="new-ticket-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+  <div style="background: #ffffff; border-radius: var(--radius-lg); width: 560px; max-width: 90%; padding: 24px; box-shadow: var(--shadow-lg);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 17px; font-weight: 800; color: var(--text-main); margin: 0;">
+        <i class="fa-solid fa-paper-plane" style="color: var(--primary);"></i> <span id="ticket-modal-title">Gửi yêu cầu</span>
+      </h3>
+      <button onclick="closeNewTicketModal()" style="border: none; background: none; font-size: 16px; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+
+    <form id="create-ticket-form" onsubmit="submitNewTicket(event)">
+      <input type="hidden" id="ticket-recipient-role">
+      <div id="ticket-course-field" style="margin-bottom: 12px;">
+        <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">Môn học liên quan</label>
+        <select id="ticket-course-id" required style="width: 100%; height: 38px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0 10px; font-size: 13px;">
+          <option value="">Chọn môn học đã ghi danh</option>
+          {% for c in courses %}
+          <option value="{{ c.id }}">{{ c.course_code }} - {{ c.title_vi }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 12px;">
+        <div>
+          <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">Phân loại vấn đề</label>
+          <select id="ticket-category" style="width: 100%; height: 38px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0 10px; font-size: 13px;">
+            <optgroup data-recipient="LECTURER" label="Vấn đề thuộc môn học">
+              <option value="ACADEMIC_MATERIAL">Học liệu và bài giảng</option>
+              <option value="ASSIGNMENT_HELP">Bài tập và nộp bài</option>
+              <option value="TECHNICAL_ISSUE">Sự cố trong lớp/môn học</option>
+              <option value="EXAM_REVIEW">Khảo thí và phúc khảo môn học</option>
+            </optgroup>
+            <optgroup data-recipient="ACADEMIC_ADMIN" label="Vấn đề chung của người học">
+              <option value="TUITION">Học phí và tài chính</option>
+              <option value="COUNSELING">Tư vấn tâm lý</option>
+              <option value="MEDICAL">Y tế và sức khỏe</option>
+              <option value="DISCIPLINARY">Công tác sinh viên và kỷ luật</option>
+              <option value="TECHNICAL_ISSUE">Sự cố hệ thống chung</option>
+              <option value="GENERAL">Vấn đề khác</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">Tiêu đề tóm tắt</label>
+        <input type="text" id="ticket-title" required style="width: 100%; height: 38px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0 10px; font-size: 13px;" placeholder="Ví dụ: Lỗi xác thực JWT khi test Postman...">
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">Nội dung chi tiết & Log lỗi</label>
+        <textarea id="ticket-content" required rows="4" style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; font-size: 13px; font-family: inherit; resize: vertical;" placeholder="Mô tả cụ thể các bước bạn đã làm, thông báo lỗi nhận được..."></textarea>
+      </div>
+      <div style="margin-bottom:16px;"><label>Tệp đính kèm (tối đa 20 MB)</label><input id="ticket-files" type="file" multiple></div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn-secondary" onclick="closeNewTicketModal()">Hủy</button>
+        <button type="submit" class="btn-primary">Gửi Yêu Cầu Hỗ Trợ</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchSupportTab(tabName) {
+  const tabTickets = document.getElementById('support-view-tickets');
+  const tabChatbot = document.getElementById('support-view-chatbot');
+  const btnTickets = document.getElementById('tab-btn-tickets');
+  const btnChatbot = document.getElementById('tab-btn-chatbot');
+
+  if (tabName === 'chatbot' && tabChatbot && btnChatbot) {
+    tabTickets.style.display = 'none';
+    tabChatbot.style.display = 'block';
+    btnTickets.classList.remove('active');
+    btnChatbot.classList.add('active');
+    loadAiSuggestions();
+  } else {
+    tabTickets.style.display = 'block';
+    if (tabChatbot) tabChatbot.style.display = 'none';
+    btnTickets.classList.add('active');
+    if (btnChatbot) btnChatbot.classList.remove('active');
+  }
+}
+
+function openNewTicketModal(recipientRole) {
+  const modal = document.getElementById('new-ticket-modal');
+  const lecturerFlow = recipientRole === 'LECTURER';
+  document.getElementById('ticket-recipient-role').value = recipientRole;
+  document.getElementById('ticket-modal-title').textContent = lecturerFlow ? 'Hỏi giảng viên về môn học' : 'Hỏi cán bộ quản lý';
+  document.getElementById('ticket-course-field').style.display = lecturerFlow ? 'block' : 'none';
+  document.getElementById('ticket-course-id').required = lecturerFlow;
+  const category = document.getElementById('ticket-category');
+  [...category.querySelectorAll('optgroup')].forEach(group => { group.hidden = group.dataset.recipient !== recipientRole; });
+  category.value = category.querySelector(`optgroup[data-recipient="${recipientRole}"] option`)?.value || '';
+  modal.style.display = 'flex';
+}
+
+function closeNewTicketModal() {
+  const modal = document.getElementById('new-ticket-modal');
+  modal.style.display = 'none';
+}
+
+function submitNewTicket(e) {
+  e.preventDefault();
+  const courseId = document.getElementById('ticket-course-id').value;
+  const recipientRole = document.getElementById('ticket-recipient-role').value;
+  const category = document.getElementById('ticket-category').value;
+  const title = document.getElementById('ticket-title').value.trim();
+  const content = document.getElementById('ticket-content').value.trim();
+
+  const body = new FormData();
+  body.append('recipient_role', recipientRole);
+  if (recipientRole === 'LECTURER') body.append('course_id', courseId);
+  body.append('category', category); body.append('title', title); body.append('content', content);
+  [...document.getElementById('ticket-files').files].forEach(file => body.append('files', file));
+  fetch('/api/support/tickets/create', { method: 'POST', body })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success') {
+      showToast(data.message);
+      closeNewTicketModal();
+      setTimeout(() => {
+        window.location.href = '/support?ticket_id=' + data.ticket_id;
+      }, 700);
+    } else {
+      alert(data.message || 'Lỗi khi gửi yêu cầu');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert('Không thể kết nối đến máy chủ');
+  });
+}
+
+function sendTicketReply(ticketId) {
+  const textarea = document.getElementById('reply-message-text');
+  const msg = textarea.value.trim();
+  if (!msg) {
+    alert('Vui lòng nhập nội dung phản hồi');
+    return;
+  }
+
+  const body = new FormData(); body.append('message', msg);
+  const internal = document.getElementById('reply-internal'); if (internal?.checked) body.append('is_internal','true');
+  [...(document.getElementById('reply-files')?.files || [])].forEach(file => body.append('files',file));
+  fetch(`/api/support/tickets/${ticketId}/reply`, { method: 'POST', body })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success') {
+      showToast('Đã gửi phản hồi thành công!');
+      setTimeout(() => window.location.reload(), 500);
+    } else {
+      alert(data.message);
+    }
+  });
+}
+
+function sendSupplementalInfo(ticketId) {
+  const message = document.getElementById('supplemental-message-text').value.trim();
+  if (!message) { alert('Nhập thông tin cần bổ sung trước khi gửi.'); return; }
+  const body = new FormData(); body.append('message', message);
+  [...document.getElementById('supplemental-files').files].forEach(file => body.append('files', file));
+  fetch(`/api/support/tickets/${ticketId}/reply`, {method:'POST', body})
+    .then(response => response.json())
+    .then(data => { if (data.status === 'success') location.reload(); else alert(data.message || 'Chưa gửi được thông tin bổ sung.'); })
+    .catch(() => alert('Không kết nối được đến máy chủ.'));
+}
+
+function updateTicketStatus(ticketId, newStatus) {
+  fetch(`/api/support/tickets/${ticketId}/status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: newStatus })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success') {
+      showToast(data.message);
+      setTimeout(() => window.location.reload(), 500);
+    }
+  });
+}
+
+function resolveSupportTicket(ticketId) {
+  const resolution = prompt('Nhập kết quả giải quyết để gửi cho sinh viên:');
+  if (!resolution?.trim()) return;
+  fetch(`/api/support/tickets/${ticketId}/status`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'RESOLVED', resolution}) }).then(r=>r.json()).then(d=>{ if(d.status==='success') location.reload(); else alert(d.message); });
+}
+function closeSupportTicket(ticketId) {
+  fetch(`/api/support/tickets/${ticketId}/close`, {method:'POST'}).then(r=>r.json()).then(d=>{ if(d.status==='success') location.reload(); else alert(d.message); });
+}
+function reopenSupportTicket(ticketId) {
+  const reason = prompt('Cho biết lý do cần mở lại yêu cầu:'); if(!reason?.trim()) return;
+  fetch(`/api/support/tickets/${ticketId}/reopen`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason})}).then(r=>r.json()).then(d=>{if(d.status==='success') location.reload();else alert(d.message);});
+}
+function rateSupportTicket(ticketId) {
+  fetch(`/api/support/tickets/${ticketId}/rate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({speed:document.getElementById('rating-speed').value,attitude:document.getElementById('rating-attitude').value,comment:document.getElementById('rating-comment').value})}).then(r=>r.json()).then(d=>{if(d.status==='success')location.reload();else alert(d.message);});
+}
+
+function fillAiPrompt(text) {
+  const input = document.getElementById('ai-chat-input');
+  input.value = text;
+  input.focus();
+}
+
+function escapeAiHtml(value) {
+  return value.replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[char]);
+}
+
+function renderAiInline(value) {
+  return escapeAiHtml(value)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+}
+
+function renderAiMarkdown(markdown) {
+  const normalized = String(markdown || '').replace(/\r/g, '')
+    .replace(/^\s*```(?:markdown|md)?\s*/i, '').replace(/\s*```\s*$/, '');
+  const lines = normalized.split('\n');
+  const html = [];
+  let paragraph = [];
+  let listTag = '';
+  let listItems = [];
+  const flushParagraph = () => {
+    if (paragraph.length) html.push(`<p>${paragraph.map(renderAiInline).join('<br>')}</p>`);
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (listItems.length) html.push(`<${listTag}>${listItems.map(item => `<li>${renderAiInline(item)}</li>`).join('')}</${listTag}>`);
+    listTag = '';
+    listItems = [];
+  };
+  const cells = line => line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(cell => cell.trim());
+  const isTableDivider = line => /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line.includes('|') && index + 1 < lines.length && isTableDivider(lines[index + 1])) {
+      flushParagraph();
+      flushList();
+      const header = cells(line);
+      const rows = [];
+      index += 2;
+      while (index < lines.length && lines[index].includes('|') && lines[index].trim()) {
+        rows.push(cells(lines[index]));
+        index += 1;
+      }
+      index -= 1;
+      html.push('<div class="ai-markdown-table-wrap"><table class="ai-markdown-table"><thead><tr>' +
+        header.map(cell => `<th>${renderAiInline(cell)}</th>`).join('') +
+        '</tr></thead><tbody>' + rows.map(row => '<tr>' + header.map((_, cellIndex) =>
+          `<td>${renderAiInline(row[cellIndex] || '')}</td>`).join('') + '</tr>').join('') +
+        '</tbody></table></div>');
+      continue;
+    }
+
+    const heading = line.match(/^\s{0,3}#{1,3}\s+(.+)$/);
+    const listItem = line.match(/^\s*(?:([-*+•])\s+|(\d+)[.)]\s+)(.+)$/);
+    if (heading) {
+      flushParagraph();
+      flushList();
+      html.push(`<h3>${renderAiInline(heading[1])}</h3>`);
+    } else if (listItem) {
+      flushParagraph();
+      const nextTag = listItem[2] ? 'ol' : 'ul';
+      if (listTag && listTag !== nextTag) flushList();
+      listTag = nextTag;
+      listItems.push(listItem[3]);
+    } else if (!line.trim()) {
+      flushParagraph();
+      flushList();
+    } else {
+      flushList();
+      paragraph.push(line.trim());
+    }
+  }
+  flushParagraph();
+  flushList();
+  return html.join('');
+}
+
+function appendAiMessage(role, text, timestamp) {
+  const container = document.getElementById('ai-chat-messages-container');
+  const row = document.createElement('div');
+  row.className = `ai-chat-message ${role}`;
+  const avatar = document.createElement('div');
+  avatar.style.cssText = 'width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:#fff;background:' + (role === 'user' ? 'var(--text-main)' : '#0d9488');
+  avatar.innerHTML = role === 'user' ? '<i class="fa-solid fa-user"></i>' : '<i class="fa-solid fa-robot"></i>';
+  const bubble = document.createElement('div');
+  bubble.className = 'ai-chat-bubble';
+  if (role === 'assistant') bubble.innerHTML = renderAiMarkdown(text);
+  else bubble.textContent = text;
+  if (role === 'user') {
+    row.append(bubble, avatar);
+  } else {
+    row.append(avatar, bubble);
+  }
+  if (timestamp) {
+    const time = document.createElement('small');
+    time.textContent = `\n${timestamp} · Trợ lý AI môn học NEU`;
+    time.style.cssText = 'display:block;margin-top:7px;color:var(--text-subtle);font-size:10px;';
+    bubble.appendChild(time);
+  }
+  container.appendChild(row);
+  container.scrollTop = container.scrollHeight;
+  return row;
+}
+
+async function readAiApiResponse(response) {
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) return response.json();
+  const body = await response.text();
+  if (response.status === 401) throw new Error('Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.');
+  if (response.status === 403) throw new Error('Tài khoản không có quyền dùng trợ lý cho môn học này.');
+  if (!response.ok) throw new Error(`Máy chủ gặp lỗi (HTTP ${response.status}). Hãy thử tải lại trang.`);
+  throw new Error(body.trim().startsWith('<')
+    ? 'Máy chủ trả về trang HTML thay vì dữ liệu trợ lý. Hãy tải lại trang hoặc báo quản trị viên.'
+    : 'Phản hồi từ máy chủ không đúng định dạng.');
+}
+
+async function sendAiChatMessage() {
+  const input = document.getElementById('ai-chat-input');
+  const query = input.value.trim();
+  if (!query) return;
+  const courseId = document.getElementById('ai-course-context').value;
+  if (!courseId) return;
+  appendAiMessage('user', query);
+  input.value = '';
+  const sendButton = document.getElementById('ai-chat-send');
+  sendButton.disabled = true;
+  const pending = appendAiMessage('assistant', 'Đang tìm trong nội dung môn học...');
+  try {
+    const response = await fetch('/api/support/chat-ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: query, course_id: courseId })
+    });
+    const data = await readAiApiResponse(response);
+    pending.remove();
+    if (!response.ok || data.status !== 'success') throw new Error(data.message || 'Trợ lý AI hiện chưa trả lời được.');
+    appendAiMessage('assistant', data.reply, data.timestamp);
+  } catch (error) {
+    pending.remove();
+    appendAiMessage('assistant', error.message || 'Không kết nối được tới trợ lý AI.');
+  } finally {
+    sendButton.disabled = false;
+    input.focus();
+  }
+}
+
+async function loadAiSuggestions() {
+  const select = document.getElementById('ai-course-context');
+  const container = document.getElementById('ai-quick-questions');
+  if (!select || !container || !select.value) return;
+  const courseId = select.value;
+  const cacheKey = `neu-ai-prompts-${courseId}`;
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(cacheKey) || 'null');
+    if (cached && Date.now() - cached.savedAt < 10 * 60 * 1000) {
+      renderAiSuggestions(cached.questions);
+      return;
+    }
+  } catch (_) {}
+  container.textContent = 'Đang tạo câu hỏi gợi ý theo môn học...';
+  try {
+    const response = await fetch('/api/support/chat-ai/suggestions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ course_id: courseId })
+    });
+    const data = await readAiApiResponse(response);
+    if (!response.ok || data.status !== 'success') throw new Error(data.message || 'Chưa tạo được câu hỏi gợi ý.');
+    sessionStorage.setItem(cacheKey, JSON.stringify({ questions: data.questions, savedAt: Date.now() }));
+    if (select.value === courseId) renderAiSuggestions(data.questions);
+  } catch (error) {
+    if (select.value === courseId) container.textContent = error.message || 'Chưa tải được câu hỏi gợi ý.';
+  }
+}
+
+function renderAiSuggestions(questions) {
+  const container = document.getElementById('ai-quick-questions');
+  container.replaceChildren();
+  questions.forEach(question => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn-secondary ai-quick-question';
+    button.textContent = question;
+    button.addEventListener('click', () => {
+      fillAiPrompt(question);
+      sendAiChatMessage();
+    });
+    container.appendChild(button);
+  });
+}
+
+function changeAiCourseContext(courseId) {
+  const url = new URL(window.location.href);
+  if (courseId) url.searchParams.set('course_id', courseId);
+  url.searchParams.set('tab', 'chatbot');
+  window.history.replaceState({}, '', url);
+  const container = document.getElementById('ai-chat-messages-container');
+  while (container.children.length > 1) container.lastElementChild.remove();
+  const greeting = container.firstElementChild?.querySelector('div:last-child');
+  if (greeting) greeting.textContent = `Đã chuyển ngữ cảnh sang ${document.getElementById('ai-course-context').selectedOptions[0].text}. Trợ lý chỉ tra cứu nội dung thuộc môn này.`;
+  loadAiSuggestions();
+}
+
+switchSupportTab({% if current_user.role in ['ACADEMIC_ADMIN', 'LECTURER'] %}'tickets'{% else %}{{ initial_tab|tojson }} === 'chatbot' ? 'chatbot' : 'tickets'{% endif %});
+</script>
+{% endblock %}

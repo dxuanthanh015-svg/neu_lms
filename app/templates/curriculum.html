@@ -1,0 +1,723 @@
+{% extends "base.html" %}
+
+{% block title %}M10.G1 - Đề cương & Bài học | {{ course.title_vi }}{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb Trail & Course Selection Bar -->
+<div
+  style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+  <div class="breadcrumb-trail" style="margin-bottom: 0;">
+    <a href="{{ url_for('curriculum.view_curriculum') }}"><i class="fa-solid fa-house-chimney"></i> Học viện</a>
+    <span>/</span>
+    <span>Khảo thí & Học liệu Số </span>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+    <!-- Course Switcher -->
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <span style="font-size: 12px; font-weight: 700; color: var(--text-muted);"><i
+          class="fa-solid fa-book-bookmark"></i> Môn học:</span>
+      <select onchange="window.location.href='{{ url_for('curriculum.view_curriculum') }}?course_id=' + this.value"
+        style="height: 34px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; padding: 0 10px; background: #ffffff;">
+        {% for c in all_courses %}
+        <option value="{{ c.id }}" {% if course and course.id==c.id %}selected{% endif %}>{{ c.course_code }} - {{
+          c.title_vi }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% if current_user and current_user.role in ['LECTURER', 'ACADEMIC_ADMIN', 'ADMIN'] %}
+    <button onclick="openModal('create-course-modal')" class="btn btn-outline"
+      style="height: 34px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: #ffffff;">
+      <i class="fa-solid fa-folder-plus"></i> + Thêm Môn Học (Vào DB)
+    </button>
+    <button onclick="openModal('create-lesson-modal')" class="btn-primary"
+      style="height: 34px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+      <i class="fa-solid fa-file-circle-plus"></i> + Thêm Bài Học Mới
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+{% if course %}
+<!-- COURSE BANNER CARD -->
+<div class="course-banner-card">
+  <div class="course-banner-left">
+    <div class="banner-badges-row">
+      <span class="badge-code">{{ course.id }}</span>
+      <span class="badge-credits">{{ course.credits }} Tín chỉ ({{ course.theory_hours }} LT / {{ course.practical_hours
+        }} TH)</span>
+      <span class="badge-faculty">{{ course.department.name }} • {{ syllabus.semester }} ({{ syllabus.academic_year
+        }})</span>
+      <span
+        class="{% if syllabus.approval_status == 'DRAFT' %}badge-status-draft{% else %}badge-status-teaching{% endif %}"><i
+          class="fa-solid fa-circle" style="font-size: 8px;"></i> {% if syllabus.approval_status == 'DRAFT' %}Đề cương
+        nháp{% else %}{{ syllabus.approval_status }}{% endif %}</span>
+    </div>
+    <h1 class="course-main-title">{{ course.title_vi }}{% if course.title_en %} ({{ course.title_en }}){% endif %}</h1>
+    <p class="course-sub-desc">
+      Quản lý đề cương chi tiết học phần, đồng bộ chuẩn đầu ra CDIO, phân bổ học liệu số hóa và liên kết ngân hàng đề
+      thi đánh giá năng lực M10.
+    </p>
+  </div>
+
+  <div class="course-banner-right">
+    <!-- Circular Progress Gauge -->
+    <div class="progress-kpi-card">
+      <div class="progress-circle-wrap">
+        <svg class="circle-svg" width="48" height="48" viewBox="0 0 36 36">
+          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none"
+            stroke="#e0f2fe" stroke-width="3.5" />
+          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none"
+            stroke="#2563eb" stroke-width="3.5"
+            stroke-dasharray="{% if total_lessons > 0 %}100, 100{% else %}0, 100{% endif %}" />
+        </svg>
+        <span class="progress-circle-text">{% if total_lessons > 0 %}100%{% else %}0%{% endif %}</span>
+      </div>
+      <div class="progress-info-text">
+        <span class="progress-info-title">Tiến độ số hóa</span>
+        <span class="progress-info-value">{{ total_lessons }} Bài học</span>
+        <span class="progress-info-tag">{% if total_lessons > 0 %}Đang giảng dạy{% else %}Chưa có bài học{% endif
+          %}</span>
+      </div>
+    </div>
+
+    <!-- Banner Actions -->
+    <div class="banner-actions">
+      {% if active_lesson %}
+      <a href="{{ url_for('telemetry.student_lesson_view', lesson_id=active_lesson.id) }}" class="btn-secondary"
+        title="Xem theo giao diện sinh viên">
+        <i class="fa-regular fa-eye"></i>
+      </a>
+      {% endif %}
+      <button class="btn-secondary" onclick="showToast('Đã đồng bộ đề cương với khung CDIO mới nhất!')">
+        <i class="fa-solid fa-arrows-rotate"></i> Cập nhật đề cương
+      </button>
+      <button class="btn-primary" onclick="showToast('Đã lưu toàn bộ thay đổi thành công!')">
+        <i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SUB-NAVIGATION TABS -->
+<div class="course-subnav-tabs">
+  <a href="{{ url_for('curriculum.view_curriculum') }}" class="subnav-tab-item active">
+    <i class="fa-solid fa-network-wired"></i> Cấu trúc đề cương & Bài học
+  </a>
+  <a href="{{ url_for('shared_repo.view_shared_repo') }}" class="subnav-tab-item">
+    <i class="fa-regular fa-folder-open"></i> Kho tài liệu môn <span class="tab-counter-badge">{{ materials_count
+      }}</span>
+  </a>
+  <a href="{{ url_for('question_bank.view_question_bank') }}" class="subnav-tab-item">
+    <i class="fa-solid fa-list-check"></i> Ngân hàng câu hỏi <span class="tab-counter-badge">{{ questions_count
+      }}</span>
+  </a>
+  <a href="{{ url_for('students.view_students') }}" class="subnav-tab-item">
+    <i class="fa-solid fa-chart-pie"></i> Thống kê lớp học
+  </a>
+</div>
+
+<!-- 2-COLUMN MAIN LAYOUT -->
+<div class="curriculum-grid-layout">
+
+  <!-- ================= LEFT COLUMN: CÂY CHƯƠNG MỤC ================= -->
+  <div class="curriculum-tree-panel">
+    <div class="tree-header-card">
+      <div class="tree-title-actions">
+        <div class="tree-main-heading">
+          <i class="fa-solid fa-diagram-project" style="color: var(--primary);"></i>
+          <span>Cây chương mục</span>
+        </div>
+        <div class="tree-btn-group">
+          <button class="btn-soft-primary" onclick="openModal('create-chapter-modal')">+ Chương (Folder)</button>
+          <button class="btn-soft-primary" onclick="openModal('create-lesson-modal')">+ Bài học</button>
+        </div>
+      </div>
+      <select class="tree-filter-select">
+        <option>Tất cả trạng thái ({{ chapters|length }} Chương)</option>
+        <option>Chỉ hiển thị bài học có bài tập</option>
+        <option>Chỉ hiển thị bài học đã hoàn thành</option>
+      </select>
+    </div>
+
+    <!-- CHAPTERS ACCORDION -->
+    <div class="chapters-accordion-list">
+      {% for ch in chapters %}
+      <div class="chapter-card-item {% if active_lesson and active_lesson.chapter_id == ch.id %}expanded{% endif %}">
+        <div class="chapter-header">
+          <div class="chapter-title-wrap">
+            <i
+              class="fa-solid {% if active_lesson and active_lesson.chapter_id == ch.id %}fa-folder-open{% else %}fa-folder{% endif %} chapter-folder-icon"></i>
+            <div class="chapter-text-group">
+              <span class="chapter-title-text">{{ ch.title }}</span>
+              <span class="chapter-sub-meta">{{ ch.lessons|length }} bài học • {{ ch.allocated_periods or 4 }} tiết
+                học</span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center;">
+            <span class="chapter-badge-metric">{{ ch.completion_metric or 'Đang triển khai' }}</span>
+            <i class="fa-solid fa-ellipsis-vertical chapter-drag-icon"></i>
+          </div>
+        </div>
+
+        <!-- Danh sách bài học của Chương -->
+        <div class="lessons-sublist"
+          style="{% if active_lesson and active_lesson.chapter_id == ch.id %}display: flex; flex-direction: column;{% else %}display: none;{% endif %}">
+          {% for les in ch.lessons %}
+          <a href="{{ url_for('curriculum.view_curriculum', lesson_id=les.id) }}"
+            class="lesson-row-item {% if active_lesson and active_lesson.id == les.id %}selected{% endif %}">
+            <div class="lesson-left-info">
+              <span class="lesson-num-badge">{{ les.lesson_number }}</span>
+              <div class="lesson-row-text">
+                <span class="lesson-row-title">{{ les.title }}</span>
+                <span class="lesson-row-meta">{{ les.theory_periods }} LT + {{ les.practice_periods }} TH</span>
+              </div>
+            </div>
+            {% if active_lesson and active_lesson.id == les.id %}
+            <span class="btn-select-pill">Chọn <i class="fa-solid fa-arrow-right"></i></span>
+            {% else %}
+            <i class="fa-solid fa-circle-check lesson-status-icon-ok"></i>
+            {% endif %}
+          </a>
+          {% else %}
+          <div style="padding: 10px 14px; font-size: 12px; color: var(--text-muted); font-style: italic;">
+            Chưa có bài học nào trong chương này.
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state-card" style="padding: 24px 12px;">
+        <i class="fa-regular fa-folder-open"
+          style="font-size: 24px; color: var(--text-subtle); margin-bottom: 8px; display: block;"></i>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-main);">Chưa có chương nào</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Đề cương chưa có dữ liệu chương mục.</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- CDIO Accreditation Card at Bottom Left -->
+    <div class="cdio-accreditation-card">
+      <div class="cdio-shield-icon">
+        <i class="fa-solid fa-shield-check"></i>
+      </div>
+      <div class="cdio-text-content">
+        <strong>Trạng thái đề cương</strong><br>
+        Mã đề cương <strong>{{ syllabus.id }}</strong> đang ở trạng thái {{ syllabus.approval_status }}. Nội dung chương
+        và bài học sẽ xuất hiện sau khi được bổ sung.
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= RIGHT COLUMN: CHI TIẾT BÀI HỌC & HỌC LIỆU SỐ ================= -->
+  <div class="lesson-details-panel">
+    {% if active_lesson %}
+    <div class="lesson-main-card">
+
+      <!-- Header: Title & Action Tools -->
+      <div class="lesson-card-header">
+        <div>
+          <div class="lesson-chapter-ref">{{ active_lesson.lesson_number }} • Thuộc Chương 1: RESTful Architecture</div>
+          <h2 class="lesson-display-title">{{ active_lesson.title }}</h2>
+        </div>
+        {% if current_user.role != 'STUDENT' %}
+        <div class="lesson-action-tools">
+          <button class="btn-secondary" onclick="showToast('Chế độ chỉnh sửa bài giảng!')">
+            <i class="fa-regular fa-pen-to-square"></i> Chỉnh sửa bài
+          </button>
+          <button class="icon-action-btn" title="Thao tác khác">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </button>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- 3 Stat KPI Cards -->
+      <div class="lesson-kpi-row">
+        <div class="kpi-mini-box">
+          <div class="kpi-mini-label">Thời lượng phân bổ</div>
+          <div class="kpi-mini-value">4 Tiết (2 LT / 2 TH)</div>
+          <div class="kpi-mini-sub">Tương đương {{ active_lesson.duration_minutes }} phút</div>
+        </div>
+        <div class="kpi-mini-box highlight-blue">
+          <div class="kpi-mini-label">Chuẩn đầu ra (CLO)</div>
+          <div class="kpi-mini-value">CLO-1.2 & CLO-2.1</div>
+          <div class="kpi-mini-sub">Mức độ Bloom: 3 (Vận dụng)</div>
+        </div>
+        <div class="kpi-mini-box highlight-orange">
+          <div class="kpi-mini-label">Trạng thái Khảo thí</div>
+          <div class="kpi-mini-value">Đang chuẩn bị</div>
+          <div class="kpi-mini-sub">{{ materials|length }} Học liệu • 0 Bài Test</div>
+        </div>
+      </div>
+
+      <!-- MỤC TIÊU & YÊU CẦU SƯ PHẠM -->
+      <div class="pedagogy-goals-section">
+        <div class="section-sub-heading">MỤC TIÊU & YÊU CẦU SƯ PHẠM</div>
+        <p class="goals-description-text">
+          Sinh viên nắm vững quy chuẩn routing trong Micro-framework Flask, kết nối cơ sở dữ liệu quan hệ bằng ORM
+          SQLAlchemy, cấu hình serialize payload JSON, thiết kế schema phản hồi HTTP đúng chuẩn RFC 7231 và chuẩn bị môi
+          trường kiểm thử tự động với PyTest.
+        </p>
+      </div>
+
+      <!-- HỌC LIỆU SỐ HOÁ ĐÃ GẮN VÀO BÀI HỌC -->
+      <div class="materials-attached-section">
+        <div class="materials-header-bar">
+          <div class="materials-header-title">
+            <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i>
+            <span>Học liệu số hoá đã gắn vào bài học</span>
+            <span class="badge-materials-count">{{ materials|length }} Tài nguyên</span>
+          </div>
+          <span class="materials-drag-hint">Kéo để đổi thứ tự hiển thị của SV</span>
+        </div>
+
+        <!-- Materials List -->
+        <div class="materials-list-container">
+          {% for mat in materials %}
+          <div class="material-card-row">
+            <div class="material-left-group">
+              <!-- Icon based on type -->
+              {% if mat.material_type == 'DOCUMENT_PDF' %}
+              <div class="material-icon-box pdf-bg"><i class="fa-solid fa-file-pdf"></i></div>
+              {% elif mat.material_type == 'VIDEO_RECORDING' %}
+              <div class="material-icon-box video-bg"><i class="fa-solid fa-circle-play"></i></div>
+              {% else %}
+              <div class="material-icon-box sandbox-bg"><i class="fa-solid fa-code"></i></div>
+              {% endif %}
+
+              <div class="material-info-stack">
+                <div class="material-title-line">
+                  <span class="material-main-name">{{ mat.title }}</span>
+                  {% if mat.file_size_bytes and mat.file_size_bytes > 0 %}
+                  <span class="material-filesize">{{ "%.1f"|format(mat.file_size_bytes / 1048576) }} MB</span>
+                  {% endif %}
+                </div>
+
+                <!-- Badges -->
+                <div class="material-badges-pills">
+                  {% if mat.material_type == 'DOCUMENT_PDF' %}
+                  <span class="mat-pill mat-pill-blue"><i class="fa-regular fa-eye"></i> Chỉ xem online</span>
+                  <span class="mat-pill mat-pill-purple"><i class="fa-solid fa-lock"></i> Bảo hộ bản quyền Học
+                    viện</span>
+                  {% elif mat.material_type == 'VIDEO_RECORDING' %}
+                  <span class="mat-pill mat-pill-gray">1080p • 320 MB • 42:15 min</span>
+                  <span class="mat-pill mat-pill-green"><i class="fa-solid fa-download"></i> Cho phép tải nội bộ</span>
+                  <span class="mat-pill mat-pill-orange"><i class="fa-solid fa-bolt"></i> Theo dõi tiến độ xem &gt;
+                    80%</span>
+                  {% else %}
+                  <span class="mat-pill mat-pill-green">Web Sandbox • Interactive</span>
+                  <a href="{{ mat.file_url }}" target="_blank" class="mat-pill mat-pill-blue"
+                    style="text-decoration: none;">
+                    <i class="fa-solid fa-link"></i> {{ mat.file_url }}
+                  </a>
+                  {% endif %}
+                </div>
+
+                <div class="material-sub-date">
+                  {% if mat.material_type == 'INTERACTIVE_SANDBOX' %}
+                  Chấm điểm tự động
+                  {% else %}
+                  Cập nhật: 12/10/2024
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Actions -->
+            <div class="material-right-actions">
+              {% if mat.material_type == 'VIDEO_RECORDING' %}
+              <a href="{{ url_for('telemetry.student_lesson_view', lesson_id=active_lesson.id) }}"
+                class="btn-preview-blue">
+                <i class="fa-solid fa-play"></i> Xem trước
+              </a>
+              {% else %}
+              <a href="{{ mat.file_url }}" target="_blank" class="icon-action-btn" title="Mở tài liệu">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              </a>
+              {% endif %}
+              {% if current_user.role != 'STUDENT' %}
+              <button class="icon-action-btn" title="Cấu hình DRM"
+                onclick="document.getElementById('drm-panel').scrollIntoView({behavior: 'smooth'})">
+                <i class="fa-solid fa-sliders"></i>
+              </button>
+              <button class="icon-action-btn delete-hover" title="Xóa tài liệu"
+                onclick="deleteMaterial('{{ mat.id }}')">
+                <i class="fa-regular fa-trash-can"></i>
+              </button>
+              {% endif %}
+            </div>
+          </div>
+          {% else %}
+          <div class="empty-state-card" style="padding: 32px 16px; margin-bottom: 16px;">
+            <i class="fa-regular fa-folder-open"
+              style="font-size: 32px; color: var(--text-subtle); margin-bottom: 8px; display: block;"></i>
+            <div style="font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">Chưa có học
+              liệu số nào</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Bài học này hiện chưa có tài liệu học tập được tải
+              lên.</div>
+          </div>
+          {% endfor %}
+        </div>
+
+        {% if current_user.role != 'STUDENT' %}
+        <!-- 2 DOTTED UPLOAD ACTION CARDS -->
+        <div class="upload-actions-grid">
+          <div class="dotted-action-card" onclick="openModal('upload-material-modal')">
+            <div class="dotted-icon-wrap">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <div class="dotted-text-wrap">
+              <span class="dotted-action-title">Tải lên học liệu mới</span>
+              <span class="dotted-action-sub">Tải file bài giảng PDF, Video MP4 hoặc tệp Zip bài tập từ máy</span>
+            </div>
+          </div>
+
+          <a href="{{ url_for('shared_repo.view_shared_repo') }}" class="dotted-action-card">
+            <div class="dotted-icon-wrap purple-bg">
+              <i class="fa-solid fa-circle-nodes"></i>
+            </div>
+            <div class="dotted-text-wrap">
+              <span class="dotted-action-title">Chọn từ Kho Học liệu Dùng chung</span>
+              <span class="dotted-action-sub">Tái sử dụng tài nguyên số đã qua thẩm định của Học viện</span>
+            </div>
+          </a>
+        </div>
+
+        <!-- Warning Alert Box -->
+        <div class="approval-rule-alert">
+          <i class="fa-solid fa-shield-halved alert-shield-icon"></i>
+          <span class="alert-rule-text">
+            <strong>Quy định thẩm định học liệu:</strong> Tài liệu tải lên mới sẽ tự động gắn cờ
+            <strong>PENDING_APPROVAL</strong> và gửi đến Cán bộ Quản lý chuyên môn để kiểm duyệt bản quyền số trước khi
+            sinh viên có thể xem hoặc tải về.
+          </span>
+        </div>
+        <!-- BÀI TẬP & NHIỆM VỤ ĐÁNH GIÁ (ASSIGNMENT) -->
+        <div class="materials-attached-section"
+          style="margin-top: 24px; padding-top: 18px; border-top: 1px dashed var(--border-color);">
+          <div class="materials-header-bar">
+            <div class="materials-header-title">
+              <i class="fa-solid fa-list-check" style="color: var(--primary);"></i>
+              <span>Bài tập & Nhiệm vụ Đánh giá (Assignment)</span>
+              <span class="badge-materials-count">0 Bài tập</span>
+            </div>
+          </div>
+          <div class="empty-state-card"
+            style="padding: 24px 16px; background: #ffffff; border-radius: var(--radius-md); border: 1px dashed var(--border-color); text-align: center;">
+            <i class="fa-solid fa-clipboard-question"
+              style="font-size: 28px; color: var(--text-subtle); margin-bottom: 8px; display: block;"></i>
+            <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">Chưa có bài tập
+              (Assignment) nào</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Giảng viên chưa thiết lập bài tập hoặc bài kiểm tra
+              đánh giá cho bài học này.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    {% endif %}
+
+    {% if current_user.role != 'STUDENT' %}
+    <!-- ================= BẢNG ĐIỀU KHIỂN BẢN QUYỀN & DRM ================= -->
+    <div class="drm-control-card" id="drm-panel">
+      <div class="drm-card-header">
+        <div class="drm-header-left">
+          <i class="fa-solid fa-shield-cat" style="color: var(--primary);"></i>
+          <span>Bảng điều khiển Bản quyền & DRM</span>
+        </div>
+        <span class="badge-watermark-active"><i class="fa-solid fa-check"></i> Watermark Động kích hoạt</span>
+      </div>
+
+      <div class="drm-controls-box">
+        <!-- Tùy chọn 1: Tải file vật lý -->
+        <div class="drm-option-item">
+          <input type="checkbox" id="drm-allow-offline" class="drm-checkbox" {% if drm_policy and
+            drm_policy.allow_offline_encrypted_study %}checked{% endif %}
+            onchange="updateDrmSettings('{{ materials[0].id if materials else '' }}')">
+          <div class="drm-option-label">
+            <span class="drm-label-title">Tải file vật lý</span>
+            <span class="drm-label-desc">Cho phép sinh viên lưu trữ offline trên thiết bị cá nhân</span>
+          </div>
+        </div>
+
+        <!-- Tùy chọn 2: Chỉ xem trực tuyến -->
+        <div class="drm-option-item">
+          <input type="checkbox" id="drm-view-online" class="drm-checkbox" {% if not drm_policy or
+            drm_policy.view_online_only %}checked{% endif %}
+            onchange="updateDrmSettings('{{ materials[0].id if materials else '' }}')">
+          <div class="drm-option-label">
+            <span class="drm-label-title">Chỉ xem trực tuyến</span>
+            <span class="drm-label-desc">Giới hạn bản quyền (Chống sao chép, nhúng mã sinh viên mờ)</span>
+          </div>
+        </div>
+
+        <!-- Phiên bản tài liệu -->
+        <div class="drm-version-selector">
+          <span class="drm-version-title">Phiên bản tài liệu</span>
+          <select id="drm-version-select" class="drm-select-input"
+            onchange="updateDrmSettings('{{ materials[0].id if materials else '' }}')">
+            <option value="v2.0" selected>v2.0 (Soạn thảo)</option>
+            <option value="v1.0">v1.0 (Chính thức)</option>
+            <option value="v2.1">v2.1 (Cập nhật)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="drm-footer-signature">
+        <i class="fa-solid fa-signature"></i>
+        <span>Chữ ký số tác giả: <strong>{{ current_user.academic_title or '' }} {{ current_user.full_name }} (ID: {{
+            current_user.user_code }})</strong> • Đồng bộ lần cuối: <span id="drm-sync-time">Hôm nay lúc
+            14:28:10</span></span>
+      </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state-card"
+      style="padding: 60px 20px; text-align: center; background: #ffffff; border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
+      <i class="fa-solid fa-book-open-reader"
+        style="font-size: 48px; color: var(--text-subtle); margin-bottom: 16px; display: block;"></i>
+      <h3 style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">Chưa có bài học nào
+        được chọn</h3>
+      <p style="font-size: 13px; color: var(--text-muted); max-width: 480px; margin: 0 auto 20px;">
+        Chương mục này hiện chưa có bài học nào hoặc chưa chọn bài giảng. Giảng viên và Cán bộ có thể thêm bài học mới
+        bằng nút bên dưới.
+      </p>
+      {% if current_user and current_user.role in ['LECTURER', 'ACADEMIC_ADMIN', 'ADMIN'] %}
+      <button onclick="openModal('create-lesson-modal')" class="btn-primary" style="height: 38px;">
+        <i class="fa-solid fa-file-circle-plus"></i> + Thêm Bài Học Mới
+      </button>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% else %}
+<div class="empty-state-card"
+  style="padding: 60px 20px; text-align: center; background: #ffffff; border-radius: var(--radius-md); border: 1px dashed var(--border-color); margin-top: 20px;">
+  <i class="fa-solid fa-graduation-cap"
+    style="font-size: 54px; color: var(--text-subtle); margin-bottom: 16px; display: block;"></i>
+  <h2 style="font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">Chưa có môn học nào trong
+    hệ thống</h2>
+  <p style="font-size: 13px; color: var(--text-muted); max-width: 500px; margin: 0 auto 20px;">
+    Hệ thống CSDL hiện tại chưa có môn học/học phần nào. Vui lòng bấm vào nút bên dưới để tạo môn học và khung đề cương
+    đầu tiên.
+  </p>
+  {% if current_user and current_user.role in ['LECTURER', 'ACADEMIC_ADMIN', 'ADMIN'] %}
+  <button onclick="openModal('create-course-modal')" class="btn-primary"
+    style="height: 40px; font-size: 13px; display: inline-flex; align-items: center; gap: 8px;">
+    <i class="fa-solid fa-folder-plus"></i> + Thêm Môn Học Mới Vào CSDL
+  </button>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- MODAL: TẢI LÊN HỌC LIỆU MỚI -->
+<div id="upload-material-modal" class="modal-overlay">
+  <div class="modal-window">
+    <div class="modal-header">
+      <h3 class="modal-title">Tải lên Học liệu Số Hóa Mới</h3>
+      <button class="modal-close-btn" onclick="closeModal('upload-material-modal')">&times;</button>
+    </div>
+    <form id="form-upload-material">
+      <div class="modal-body">
+        <input type="hidden" id="new-mat-lesson-id" value="{{ active_lesson.id }}">
+
+        <div class="form-group">
+          <label class="form-label">Tên tệp học liệu / Bài giảng</label>
+          <input type="text" id="new-mat-title" class="form-input"
+            placeholder="Ví dụ: Slide_Bai2_Authentication_JWT.pdf" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Định dạng / Phân loại học liệu</label>
+          <select id="new-mat-type" class="form-select">
+            <option value="DOCUMENT_PDF">Tài liệu chuẩn PDF (.pdf)</option>
+            <option value="SLIDE_PRESENTATION">Slide bài giảng (.pptx, .key)</option>
+            <option value="VIDEO_RECORDING">Video bài giảng Full HD (.mp4)</option>
+            <option value="SOURCE_CODE_ZIP">Mã nguồn mẫu Starter Boilerplate (.zip)</option>
+            <option value="INTERACTIVE_SANDBOX">Swagger API Interactive Sandbox</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+            <input type="checkbox" id="new-mat-shared">
+            <span>Đăng ký chia sẻ vào <strong>Kho Học Liệu Dùng Chung</strong> toàn Học viện</span>
+          </label>
+        </div>
+
+        <div class="approval-rule-alert" style="margin-top: 14px;">
+          <i class="fa-solid fa-triangle-exclamation" style="color: var(--warning);"></i>
+          <span style="font-size: 11px;">Tài liệu sau khi tải lên sẽ tự động áp dụng chính sách Watermark động MSSV và
+            gửi phê duyệt SLA 28 giờ.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeModal('upload-material-modal')">Hủy bỏ</button>
+        <button type="submit" class="btn-primary"><i class="fa-solid fa-cloud-arrow-up"></i> Xác nhận tải lên tệp học
+          liệu</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: TẠO CHƯƠNG MỚI (FOLDER) -->
+<div id="create-chapter-modal" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 540px;">
+    <div class="modal-header">
+      <div class="modal-title">
+        <i class="fa-solid fa-folder-plus" style="color: var(--primary);"></i>
+        <span>Thêm Chương Đề Cương (Folder) Mới</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('create-chapter-modal')">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('curriculum.create_chapter') }}">
+      <div class="modal-body">
+        <input type="hidden" name="syllabus_id" value="{{ syllabus.id if syllabus else '' }}">
+
+        <div class="form-group">
+          <label class="form-label">Tên chương mục (Folder) <span style="color: #dc2626;">*</span></label>
+          <input type="text" name="title" required class="form-input"
+            placeholder="Ví dụ: Chương 2: Thiết kế Kiến trúc và RESTful APIs">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Số tiết định mức</label>
+          <input type="number" name="allocated_periods" value="6" min="1" max="20" class="form-input">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeModal('create-chapter-modal')">Hủy bỏ</button>
+        <button type="submit" class="btn-primary">
+          <i class="fa-solid fa-check"></i> Xác nhận thêm chương
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL TẠO MÔN HỌC MỚI (LƯU DB) -->
+<div id="create-course-modal" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 540px;">
+    <div class="modal-header">
+      <div class="modal-title">
+        <i class="fa-solid fa-folder-plus" style="color: var(--primary);"></i>
+        <span>Thêm Môn Học Mới Vào CSDL</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('create-course-modal')">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('curriculum.create_course') }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Mã học phần (Course Code) <span style="color: #dc2626;">*</span></label>
+          <input type="text" name="course_code" required class="form-input" placeholder="Ví dụ: INT3306, MAT1093...">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Tên môn học (Tiếng Việt) <span style="color: #dc2626;">*</span></label>
+          <input type="text" name="title_vi" required class="form-input"
+            placeholder="Ví dụ: Phát triển ứng dụng Web nâng cao">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Tên môn học (Tiếng Anh)</label>
+          <input type="text" name="title_en" class="form-input"
+            placeholder="Ví dụ: Advanced Web Application Development">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label">Số tín chỉ</label>
+            <input type="number" name="credits" value="3" min="1" max="6" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Giờ lý thuyết</label>
+            <input type="number" name="theory_hours" value="30" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Giờ thực hành</label>
+            <input type="number" name="practical_hours" value="15" class="form-input">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Chuẩn đầu ra khung</label>
+          <input type="text" name="cdio_standard" value="" placeholder="Nhập chuẩn chương trình đào tạo"
+            class="form-input">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeModal('create-course-modal')">Hủy</button>
+        <button type="submit" class="btn-primary"><i class="fa-solid fa-save"></i> Tạo & Lưu Vào CSDL</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL TẠO BÀI HỌC MỚI (LƯU DB) -->
+<div id="create-lesson-modal" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 540px;">
+    <div class="modal-header">
+      <div class="modal-title">
+        <i class="fa-solid fa-file-circle-plus" style="color: var(--primary);"></i>
+        <span>Thêm Bài Học Mới Vào Chương Mục</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('create-lesson-modal')">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('curriculum.create_lesson') }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Chọn chương đề cương <span style="color: #dc2626;">*</span></label>
+          <select name="chapter_id" required class="form-select">
+            {% for ch in chapters %}
+            <option value="{{ ch.id }}">{{ ch.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label">Số thứ tự bài</label>
+            <input type="text" name="lesson_number"
+              value="1.{{ (chapters[0].lessons|length + 1) if chapters and chapters[0].lessons else 1 }}"
+              class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Loại bài học</label>
+            <select name="lesson_type" class="form-select">
+              <option value="THEORY">Lý thuyết chuyên đề (THEORY)</option>
+              <option value="PRACTICE_LAB">Thực hành Lab (PRACTICE_LAB)</option>
+              <option value="QUIZ_REVIEW">Khảo thí & Đánh giá (QUIZ_REVIEW)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Tên bài học <span style="color: #dc2626;">*</span></label>
+          <input type="text" name="title" required class="form-input"
+            placeholder="Ví dụ: Thiết kế cơ sở dữ liệu và chuẩn hóa quan hệ">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Thời lượng bài học (Phút)</label>
+          <input type="number" name="duration_minutes" value="30" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mục tiêu học tập (Mỗi dòng 1 mục tiêu)</label>
+          <textarea name="goals" rows="3" class="form-input"
+            placeholder="Mục tiêu 1: Hiểu kiến trúc...&#10;Mục tiêu 2: Triển khai..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeModal('create-lesson-modal')">Hủy</button>
+        <button type="submit" class="btn-primary"><i class="fa-solid fa-save"></i> Thêm Bài Học Mới</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

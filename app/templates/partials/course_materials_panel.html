@@ -1,0 +1,49 @@
+<section class="lesson-main-card" style="margin-bottom:18px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+    <div><h2 style="margin:0 0 4px;font-size:17px;color:var(--text-main);"><i class="fa-solid fa-folder-open" style="color:var(--primary);"></i> Học liệu môn học</h2><p style="margin:0;font-size:12px;color:var(--text-muted);">Tài liệu áp dụng cho các lớp học phần thuộc {{ selected_course.course_code }} · {{ selected_course.title_vi }}.</p></div>
+    <span class="tab-counter-badge">{{ course_materials|length }} tài liệu</span>
+  </div>
+
+  {% if can_manage_course_materials %}
+  <form method="POST" enctype="multipart/form-data" action="{{ url_for('shared_repo.upload_course_material', course_id=selected_course.id) }}" style="display:grid;gap:10px;padding:14px;background:var(--bg-page);border:1px solid var(--border-light);border-radius:var(--radius-sm);margin-bottom:14px;">
+    <div style="padding:9px 11px;border:1px solid #bfdbfe;border-radius:8px;background:#eff6ff;color:#1e40af;font-size:12px;"><i class="fa-solid fa-circle-info"></i> Học liệu sẽ chờ cán bộ quản lý duyệt; sau khi duyệt mới hiển thị cho sinh viên ở tất cả lớp học phần của môn.</div>
+    <label style="display:grid;gap:5px;font-size:12px;font-weight:700;color:var(--text-body);">Tiêu đề học liệu<input type="text" name="title" class="form-input" maxlength="255" placeholder="Ví dụ: Giáo trình môn học"></label>
+    <label style="display:grid;gap:5px;font-size:12px;font-weight:700;color:var(--text-body);">Nội dung / mô tả<textarea name="description" class="form-textarea" rows="3" placeholder="Mô tả nội dung hoặc cách sử dụng tài liệu"></textarea></label>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <input id="course-material-files-{{ selected_course.id }}" type="file" name="files" multiple required accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv,.zip,.rar" hidden onchange="showCourseMaterialFiles(this,'course-material-file-names-{{ selected_course.id }}')">
+      <button type="button" class="btn-primary" onclick="document.getElementById('course-material-files-{{ selected_course.id }}').click()" style="height:38px;display:inline-flex;align-items:center;gap:8px;"><i class="fa-solid fa-folder-open"></i> Chọn tệp học liệu</button>
+      <span id="course-material-file-names-{{ selected_course.id }}" style="font-size:12px;color:var(--text-body);">Chưa chọn tệp</span>
+      <span style="font-size:11px;color:var(--text-muted);">PDF, Word, Excel, PowerPoint, ảnh, ZIP/RAR, TXT, CSV · tối đa 50 MB</span>
+      <button type="submit" class="btn-primary" style="height:38px;display:inline-flex;align-items:center;gap:7px;"><i class="fa-solid fa-paper-plane"></i> Lưu và gửi duyệt</button>
+    </div>
+  </form>
+  {% endif %}
+
+  <div style="display:grid;gap:9px;">
+    {% for material in course_materials %}
+    <article style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:13px 14px;border:1px solid var(--border-light);border-radius:var(--radius-sm);background:#fff;">
+      <div style="min-width:0;flex:1;"><strong style="display:block;color:var(--text-main);overflow-wrap:anywhere;">{{ material.title }}</strong><span style="font-size:11px;color:var(--text-muted);">{{ material.file_name }} · {{ (material.file_size_bytes / 1024)|round|int }} KB</span>{% if can_manage_course_materials %}<span class="mat-pill {% if material.publication_status == 'PUBLISHED' %}mat-pill-green{% elif material.publication_status == 'REJECTED' %}mat-pill-orange{% else %}mat-pill-blue{% endif %}" style="margin-left:6px;font-size:10px;">{% if material.publication_status == 'PUBLISHED' %}Đã duyệt{% elif material.publication_status == 'REJECTED' %}Từ chối{% else %}Chờ duyệt{% endif %}</span>{% endif %}{% if material.description %}<p style="white-space:pre-wrap;margin:5px 0 0;font-size:12px;color:var(--text-body);">{{ material.description }}</p>{% endif %}{% if can_manage_course_materials and material.publication_status == 'REJECTED' and material.review_comment %}<p style="margin:6px 0 0;color:#b91c1c;font-size:12px;"><strong>Lý do:</strong> {{ material.review_comment }}</p>{% endif %}{% if can_manage_course_materials and material.publication_status == 'PENDING_REVIEW' %}<p style="margin:6px 0 0;color:#1d4ed8;font-size:12px;">Đang chờ cán bộ quản lý phê duyệt; sinh viên chưa xem được.</p>{% endif %}</div>
+      <div style="display:flex;gap:8px;align-items:center;"><a href="{{ url_for('shared_repo.download_course_material', material_id=material.id) }}" class="btn-primary" style="display:inline-flex;align-items:center;gap:7px;height:34px;text-decoration:none;font-size:12px;"><i class="fa-solid fa-download"></i> Tải / xem</a>{% if can_manage_course_materials %}<button type="button" class="btn-secondary" onclick="toggleCourseMaterialEdit('{{ material.id }}')" style="height:34px;"><i class="fa-regular fa-pen-to-square"></i> Chỉnh sửa</button>{% endif %}</div>
+    </article>
+    {% if can_manage_course_materials %}
+    <form id="course-material-edit-{{ material.id }}" method="POST" enctype="multipart/form-data" action="{{ url_for('shared_repo.update_course_material', material_id=material.id) }}" style="display:none;gap:10px;padding:14px;background:var(--bg-page);border:1px solid var(--border-light);border-radius:var(--radius-sm);">
+      <label style="display:grid;gap:5px;font-size:12px;font-weight:700;">Tiêu đề<input name="title" class="form-input" maxlength="255" value="{{ material.title }}" required></label>
+      <label style="display:grid;gap:5px;font-size:12px;font-weight:700;">Nội dung / mô tả<textarea name="description" class="form-textarea" rows="3">{{ material.description or '' }}</textarea></label>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><input id="course-material-replace-{{ material.id }}" type="file" name="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv,.zip,.rar" hidden onchange="showCourseMaterialFiles(this,'course-material-replace-name-{{ material.id }}')"><button type="button" class="btn-secondary" onclick="document.getElementById('course-material-replace-{{ material.id }}').click()" style="height:34px;"><i class="fa-solid fa-folder-open"></i> Thay tệp (không bắt buộc)</button><span id="course-material-replace-name-{{ material.id }}" style="font-size:12px;color:var(--text-muted);">Đang dùng {{ material.file_name }}</span></div>
+      <button type="submit" class="btn-primary" style="justify-self:start;height:36px;"><i class="fa-solid fa-paper-plane"></i> Lưu và gửi duyệt lại</button>
+    </form>
+    {% endif %}
+    {% else %}<div style="padding:24px;text-align:center;color:var(--text-muted);border:1px dashed var(--border-color);border-radius:var(--radius-sm);">Môn học chưa có học liệu được tải lên.</div>{% endfor %}
+  </div>
+</section>
+
+<script>
+function showCourseMaterialFiles(input, targetId) {
+  const target = document.getElementById(targetId);
+  if (target) target.textContent = [...input.files].map(file => file.name).join(', ') || 'Chưa chọn tệp';
+}
+function toggleCourseMaterialEdit(materialId) {
+  const form = document.getElementById(`course-material-edit-${materialId}`);
+  if (form) form.style.display = form.style.display === 'none' ? 'grid' : 'none';
+}
+</script>

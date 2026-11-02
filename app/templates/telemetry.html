@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}M10.M2 - Thống kê Telemetry & Giám sát Live{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-trail">
+  <a href="{{ url_for('curriculum.view_curriculum') }}"><i class="fa-solid fa-house-chimney"></i> Học viện</a>
+  <span>/</span>
+  <span>M10.M2 - Giám sát Telemetry & Liêm chính Học thuật</span>
+</div>
+
+<div class="course-banner-card" style="margin-bottom: 24px;">
+  <div class="course-banner-left">
+    <div class="banner-badges-row">
+      <span class="badge-code">REC LIVE</span>
+      <span class="mat-pill mat-pill-green"><i class="fa-solid fa-wifi"></i> Telemetry Heartbeat Active</span>
+      <span class="badge-status-teaching"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> Realtime Logging</span>
+    </div>
+    <h1 class="course-main-title">Nhật ký Giám sát Telemetry & Liêm chính Học thuật</h1>
+    <p class="course-sub-desc">
+      Theo dõi tiến trình sinh viên xem video bài giảng thực tế theo thời gian thực, watermark động gắn mã số SV + IP chống rò rỉ, kiểm tra mốc hoàn thành &gt; 80%.
+    </p>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+  <!-- Telemetry Logs Table -->
+  <div class="lesson-main-card">
+    <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-bottom: 14px;">
+      <i class="fa-solid fa-video" style="color: var(--primary);"></i> Phiên xem bài giảng Live Telemetry
+    </h3>
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--border-color); text-align: left; background-color: #f8fafc;">
+          <th style="padding: 10px 12px; color: var(--text-muted);">Sinh viên</th>
+          <th style="padding: 10px 12px; color: var(--text-muted);">Học liệu Video</th>
+          <th style="padding: 10px 12px; color: var(--text-muted);">Thời gian tích lũy</th>
+          <th style="padding: 10px 12px; color: var(--text-muted);">Watermark Chuỗi ID</th>
+          <th style="padding: 10px 12px; color: var(--text-muted);">Băng thông</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr style="border-bottom: 1px solid var(--border-light);">
+          <td style="padding: 12px; font-weight: 700; color: var(--text-main);">
+            {{ log.student.full_name }} ({{ log.student.user_code }})
+          </td>
+          <td style="padding: 12px; color: var(--primary); font-weight: 600;">
+            {{ log.material.title }}
+          </td>
+          <td style="padding: 12px; font-weight: 700;">
+            {{ (log.accumulated_seconds / 60)|int }}m{{ log.accumulated_seconds % 60 }}s / {{ (log.total_video_seconds / 60)|int }}m{{ log.total_video_seconds % 60 }}s
+            <div style="font-size: 10px; color: var(--warning); font-weight: 600;">Tiến độ: {{ "%.1f"|format(log.accumulated_seconds / log.total_video_seconds * 100) if log.total_video_seconds else 0 }}% (Cần &gt; 80%)</div>
+          </td>
+          <td style="padding: 12px; font-family: monospace; font-size: 11px; color: var(--text-muted);">
+            {{ log.watermark_string }}
+          </td>
+          <td style="padding: 12px; font-weight: 600; color: var(--success);">
+            {{ log.network_speed_mbps }} Mbps
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 32px 16px; color: var(--text-muted);">
+            <i class="fa-solid fa-chart-line" style="font-size: 24px; margin-bottom: 8px; display: block; color: var(--text-subtle);"></i>
+            Chưa có bản ghi giám sát Telemetry nào được ghi nhận.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Submissions & Evaluations Preview -->
+  <div class="lesson-main-card">
+    <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-bottom: 14px;">
+      <i class="fa-solid fa-file-arrow-up" style="color: var(--primary);"></i> Bài nộp & Chấm điểm (M10.S1)
+    </h3>
+    {% for sub in submissions %}
+    <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; margin-bottom: 12px;">
+      <div style="font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 2px;">{{ sub.student.user_code }} - {{ sub.student.full_name }}</div>
+      <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">{{ sub.submitted_file_name }}</div>
+      {% if sub.git_repo_url %}
+        <a href="{{ sub.git_repo_url }}" target="_blank" style="font-size: 11px; color: var(--primary); word-break: break-all; display: block; margin-bottom: 6px;">
+          <i class="fa-brands fa-github"></i> {{ sub.git_repo_url }}
+        </a>
+      {% endif %}
+      <div style="font-size: 12px; color: var(--text-body); font-style: italic; margin-bottom: 8px;">
+        "{{ sub.student_note }}"
+      </div>
+
+      {% if sub.evaluation %}
+      <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-sm); padding: 8px 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+          <span style="font-size: 11px; font-weight: 700; color: #065f46;">ĐÃ CHẤM BỞI: {{ sub.evaluation.grader.full_name }}</span>
+          <span style="font-size: 14px; font-weight: 800; color: var(--success);">{{ sub.evaluation.final_score }} / 10 Điểm</span>
+        </div>
+        <p style="font-size: 11px; color: #047857;">{{ sub.evaluation.instructor_feedback }}</p>
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 32px 16px; color: var(--text-muted); background: #f8fafc; border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
+      <i class="fa-regular fa-folder-open" style="font-size: 24px; margin-bottom: 8px; display: block; color: var(--text-subtle);"></i>
+      Chưa có bài tập nào được nộp trong phân hệ.
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

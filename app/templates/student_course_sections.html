@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Lớp học phần của tôi | NEU LMS{% endblock %}
+
+{% block content %}
+<style>
+  .course-progress-ring { width:48px; height:48px; border-radius:50%; display:grid; place-items:center; flex:0 0 auto; position:relative; }
+  .course-progress-ring::before { content:""; position:absolute; inset:5px; border-radius:50%; background:#fff; }
+  .course-progress-ring span { position:relative; z-index:1; font-size:10px; font-weight:800; color:var(--text-main); }
+  .week-section-tabs { display:grid; grid-template-columns:minmax(0,1fr); gap:9px; margin:0 0 16px; }
+  .week-section-tab { width:100%; min-height:48px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 16px; border:1px solid var(--border-color); border-radius:10px; background:#fff; color:var(--text-body); font:inherit; font-size:14px; font-weight:700; text-align:left; cursor:pointer; transition:background .15s,border-color .15s,color .15s,box-shadow .15s; }
+  .week-section-tab:hover { border-color:var(--primary); background:#f5f8ff; color:var(--primary); }
+  .week-section-tab.is-active { border-color:var(--primary); background:#eef4ff; color:var(--primary); box-shadow:0 0 0 2px rgba(37,99,235,.08); }
+  .week-toggle-chevron { transition:transform .18s ease; }
+  .week-section-tab.is-active .week-toggle-chevron { transform:rotate(180deg); }
+</style>
+<div class="breadcrumb-trail" style="margin-bottom:18px;">
+  <a href="{{ url_for('curriculum.view_curriculum') }}"><i class="fa-solid fa-house-chimney"></i> Học tập</a>
+  {% if selected_enrollment %}<span>/</span><span>{{ selected_enrollment.section.section_code }}</span>{% endif %}
+</div>
+
+{% if selected_enrollment %}
+<div class="course-banner-card" style="margin-bottom:20px;">
+  <div class="course-banner-left">
+    <div class="banner-badges-row">
+      <span class="badge-code">{{ selected_enrollment.section.section_code }}</span>
+      <span class="mat-pill mat-pill-blue">{{ selected_enrollment.section.semester }} · {{ selected_enrollment.section.academic_year }}</span>
+      {% if selected_enrollment.lab_group %}<span class="mat-pill mat-pill-teal">{{ selected_enrollment.lab_group }}</span>{% endif %}
+    </div>
+    <h1 class="course-main-title">{{ selected_enrollment.section.display_name }}</h1>
+    <p class="course-sub-desc" style="margin-bottom:0;">{{ selected_enrollment.section.course.course_code }} · {{ selected_enrollment.section.course.title_vi }}</p>
+  </div>
+  <div class="course-banner-right">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+      <a href="{{ url_for('support.view_support', course_id=selected_enrollment.section.course_id, tab='chatbot') }}" class="btn-primary"><i class="fa-solid fa-robot"></i> Hỏi trợ lý môn học</a>
+      <a href="{{ url_for('curriculum.view_curriculum') }}" class="btn-secondary"><i class="fa-solid fa-arrow-left"></i> Tất cả lớp học phần</a>
+    </div>
+  </div>
+</div>
+
+{% include 'partials/course_materials_panel.html' %}
+
+<section class="lesson-main-card">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">
+    <div>
+      <h2 style="margin:0 0 4px;font-size:17px;color:var(--text-main);"><i class="fa-solid fa-folder-open" style="color:var(--primary);"></i> Tài liệu lớp học phần</h2>
+      <p style="margin:0;font-size:12px;color:var(--text-muted);">Tài liệu đã được giảng viên chia sẻ cho lớp này.</p>
+    </div>
+    <span class="tab-counter-badge">{{ materials|length }} tài liệu</span>
+  </div>
+  <div style="display:grid;gap:10px;">
+    {% for week, week_items in week_materials %}
+    <details {% if request.args.get('open_week') == week.id %}open{% endif %} style="border:1px solid var(--border-color);border-radius:var(--radius-md);background:#fff;overflow:hidden;">
+      <summary style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;cursor:pointer;list-style:none;">
+        <span><span class="badge-code">Tuần {{ '%02d'|format(week.week_number) }}</span> <strong style="margin-left:8px;color:var(--text-main);">{{ week.title }}</strong></span>
+        <span class="tab-counter-badge">{{ week_items|length }} tài liệu · {{ assignments_by_week[week.id]|length }} assignment</span>
+      </summary>
+      <div style="border-top:1px solid var(--border-light);padding:14px 16px;">
+        <div class="week-section-tabs">
+          <button type="button" class="week-section-tab" aria-expanded="false" onclick="toggleStudentWeekPane('{{ week.id }}','content',this)"><span><i class="fa-solid fa-book-open"></i> &nbsp;Nội dung học phần</span><i class="fa-solid fa-chevron-down week-toggle-chevron"></i></button>
+          <div id="student-week-pane-content-{{ week.id }}" style="display:none;gap:8px;">
+        {% if week.content %}<div style="white-space:pre-wrap;font-size:13px;line-height:1.6;color:var(--text-body);padding:2px 0 8px;">{{ week.content }}</div>{% endif %}
+        {% for material in week_items %}
+        <article style="display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:11px 12px;background:#fff;">
+          <div style="min-width:0;">
+            <strong style="display:block;font-size:13px;color:var(--text-main);overflow-wrap:anywhere;">{{ material.title }}</strong>
+            <span style="font-size:11px;color:var(--text-muted);">{{ material.material_type|replace('_',' ')|title }}</span>
+            {% if material.summary_desc %}<p style="font-size:12px;color:var(--text-body);margin:5px 0 0;">{{ material.summary_desc }}</p>{% endif %}
+          </div>
+          {% if material.file_url %}<a href="{{ url_for('curriculum.download_course_material', material_id=material.id) }}" target="_blank" rel="noopener" class="btn-primary" style="display:inline-flex;align-items:center;gap:7px;height:34px;flex:0 0 auto;text-decoration:none;font-size:12px;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Xem tài liệu</a>{% endif %}
+        </article>
+        {% else %}
+        <div style="font-size:12px;color:var(--text-muted);padding:4px 0;">Chưa có tài liệu cho tuần này.</div>
+        {% endfor %}
+          </div>
+          <button type="button" class="week-section-tab {% if request.args.get('pane') == 'assignment' %}is-active{% endif %}" aria-expanded="{{ 'true' if request.args.get('pane') == 'assignment' else 'false' }}" onclick="toggleStudentWeekPane('{{ week.id }}','assignment',this)"><span><i class="fa-solid fa-file-pen"></i> &nbsp;Assignment</span><span style="display:flex;align-items:center;gap:10px;"><span class="tab-counter-badge">{{ assignments_by_week[week.id]|length }}</span><i class="fa-solid fa-chevron-down week-toggle-chevron"></i></span></button>
+          <div id="student-week-pane-assignment-{{ week.id }}" {% if request.args.get('pane') == 'assignment' %}style="display:grid;gap:12px;"{% else %}style="display:none;gap:12px;"{% endif %}>
+          {% for assignment in assignments_by_week[week.id] %}
+          {% set my_submission = namespace(row=None) %}
+          {% for submission in assignment.submissions %}{% if submission.student_user_id == current_user.id %}{% set my_submission.row = submission %}{% endif %}{% endfor %}
+          <article style="padding:14px;border:1px solid var(--border-color);border-radius:var(--radius-sm);background:#fff;">
+            <h3 style="margin:0 0 7px;font-size:15px;color:var(--text-main);">{{ assignment.title }}</h3>
+            <div style="white-space:pre-wrap;font-size:13px;line-height:1.6;color:var(--text-body);">{{ assignment.instructions_markdown }}</div>
+            <div style="margin:9px 0;font-size:12px;color:var(--text-muted);">Deadline: {{ assignment.deadline_time.strftime('%d/%m/%Y %H:%M') }}</div>
+            {% if assignment.attachments %}<div style="display:grid;gap:5px;margin-bottom:12px;">{% for attachment in assignment.attachments %}<a href="{{ url_for('curriculum.download_assignment_file', file_id=attachment.id) }}" style="font-size:12px;color:var(--primary);">{{ attachment.file_name }}</a>{% endfor %}</div>{% endif %}
+            {% if my_submission.row %}
+            <div style="padding:10px;margin-bottom:10px;background:var(--bg-page);border-radius:var(--radius-sm);font-size:12px;">
+              <strong>Đã nộp{% if my_submission.row.is_late %} (muộn){% endif %}</strong> · {{ my_submission.row.submitted_at.strftime('%d/%m/%Y %H:%M') }}
+              {% if my_submission.row.student_note %}<div style="white-space:pre-wrap;margin-top:5px;">{{ my_submission.row.student_note }}</div>{% endif %}
+              {% for file in my_submission.row.files %}<div><a href="{{ url_for('curriculum.download_assignment_file', file_id=file.id) }}">{{ file.file_name }}</a></div>{% endfor %}
+            </div>
+            {% endif %}
+            <form method="POST" enctype="multipart/form-data" action="{{ url_for('curriculum.submit_assignment', assignment_id=assignment.id) }}" style="display:grid;gap:8px;">
+              <label style="display:grid;gap:5px;font-size:12px;font-weight:700;">Tệp bài làm<input type="file" name="files" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pdf,.zip,.rar,.txt,.csv,.py,.java,.js,.html,.css,.sql,.ipynb"></label>
+              <label style="display:grid;gap:5px;font-size:12px;font-weight:700;">Ghi chú<textarea name="student_note" class="form-textarea" rows="2" placeholder="Ghi chú cho giảng viên">{{ my_submission.row.student_note if my_submission.row else '' }}</textarea></label>
+              <button type="submit" class="btn-primary" style="justify-self:start;height:36px;"><i class="fa-solid fa-upload"></i> {{ 'Cập nhật bài nộp' if my_submission.row else 'Nộp bài' }}</button>
+            </form>
+          </article>
+          {% else %}<div style="padding:18px;text-align:center;color:var(--text-muted);border:1px dashed var(--border-color);border-radius:var(--radius-sm);">Chưa có assignment trong tuần này.</div>{% endfor %}
+          </div>
+        </div>
+      </div>
+    </details>
+    {% endfor %}
+    {% if unassigned_materials %}
+    <details style="border:1px solid var(--border-color);border-radius:var(--radius-md);background:#fff;overflow:hidden;">
+      <summary style="padding:14px 16px;cursor:pointer;list-style:none;font-weight:700;color:var(--text-main);">Tài liệu lớp học phần khác · {{ unassigned_materials|length }}</summary>
+      <div style="border-top:1px solid var(--border-light);padding:14px 16px;display:grid;gap:8px;">
+        {% for material in unassigned_materials %}<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border:1px solid var(--border-light);border-radius:var(--radius-sm);"><strong>{{ material.title }}</strong>{% if material.file_url %}<a class="btn-primary" href="{{ url_for('curriculum.download_course_material', material_id=material.id) }}" target="_blank" rel="noopener" style="text-decoration:none;">Xem tài liệu</a>{% endif %}</div>{% endfor %}
+      </div>
+    </details>
+    {% endif %}
+  </div>
+</section>
+{% else %}
+<section class="lesson-main-card">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">
+    <div>
+      <h1 style="margin:0 0 4px;font-size:20px;color:var(--text-main);">Lớp học phần của tôi</h1>
+      <p style="margin:0;font-size:13px;color:var(--text-muted);">Chọn lớp học phần để xem tài liệu được chia sẻ.</p>
+    </div>
+    <span class="tab-counter-badge">{{ enrollments|length }} lớp</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+    {% for enrollment in enrollments %}
+    <a href="{{ url_for('curriculum.view_curriculum', section_id=enrollment.section_id) }}" style="display:block;text-decoration:none;color:inherit;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:16px;background:#fff;transition:box-shadow .15s,border-color .15s;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <span class="badge-code">{{ enrollment.section.section_code }}</span>
+        {% set progress = course_progress.get(enrollment.section_id, {'completed': 0, 'percent': 0}) %}
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="course-progress-ring" role="img" aria-label="Hoàn thành {{ progress.completed }} trên 15 buổi" title="{{ progress.completed }}/15 buổi đã hoàn thành · Không nộp assignment thì buổi đó không được tính" style="background:conic-gradient(var(--primary) {{ progress.percent }}%, #e8eef7 {{ progress.percent }}% 100%);"><span>{{ progress.percent }}%</span></div>
+          <i class="fa-solid fa-arrow-right" style="color:var(--primary);"></i>
+        </div>
+      </div>
+      <h2 style="margin:12px 0 5px;font-size:16px;color:var(--text-main);">{{ enrollment.section.display_name }}</h2>
+      <div style="font-size:13px;color:var(--text-body);">{{ enrollment.section.course.course_code }} · {{ enrollment.section.course.title_vi }}</div>
+      <div style="margin-top:8px;font-size:12px;color:var(--text-muted);">{{ enrollment.section.semester }} · {{ enrollment.section.academic_year }}</div>
+      {% if enrollment.lab_group %}<div style="margin-top:8px;font-size:12px;color:var(--text-muted);">Nhóm thực hành: {{ enrollment.lab_group }}</div>{% endif %}
+    </a>
+    {% else %}
+    <div class="empty-state-card" style="grid-column:1/-1;padding:44px 20px;">
+      <i class="fa-solid fa-chalkboard-user" style="font-size:30px;color:var(--text-subtle);display:block;margin-bottom:10px;"></i>
+      <strong style="color:var(--text-main);">Bạn chưa được thêm vào lớp học phần nào</strong>
+      <p style="font-size:12px;color:var(--text-muted);margin:6px 0 0;">Các lớp được ghi danh sẽ xuất hiện ở đây.</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleStudentWeekPane(weekId, pane, button) {
+  const panel = document.getElementById(`student-week-pane-${pane}-${weekId}`);
+  const opening = panel.style.display === 'none';
+  panel.style.display = opening ? 'grid' : 'none';
+  button.classList.toggle('is-active', opening);
+  button.setAttribute('aria-expanded', opening ? 'true' : 'false');
+}
+</script>
+{% endblock %}

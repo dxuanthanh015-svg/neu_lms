@@ -1,0 +1,563 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px; margin-bottom: 24px;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+      <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0;">
+        Bảng Điều Khiển Quản Trị Hệ Thống
+      </h1>
+      <span class="badge" style="background: rgba(225, 29, 72, 0.1); color: #e11d48; border: 1px solid rgba(225, 29, 72, 0.2); font-weight: 700; padding: 4px 10px; border-radius: 20px; font-size: 11px;">
+        <i class="fa-solid fa-shield-halved"></i> QUẢN TRỊ VIÊN • M10.ADMIN
+      </span>
+    </div>
+    <p style="font-size: 13px; color: var(--text-muted); margin: 0;">
+      Quản lý tài khoản người dùng, phân quyền truy cập và cấu hình vận hành nền tảng LMS / Khảo thí số M10.
+    </p>
+  </div>
+
+  <div style="display: flex; gap: 10px; align-items: center;">
+    <a href="{{ url_for('admin.manage_users') }}" class="btn {% if active_tab == 'users' %}btn-primary{% else %}btn-outline{% endif %}" style="height: 38px; display: inline-flex; align-items: center; gap: 8px;">
+      <i class="fa-solid fa-users-gear"></i>
+      <span>Tài khoản & Phân quyền (4.1)</span>
+    </a>
+    <a href="{{ url_for('admin.system_config') }}" class="btn {% if active_tab == 'system' %}btn-primary{% else %}btn-outline{% endif %}" style="height: 38px; display: inline-flex; align-items: center; gap: 8px;">
+      <i class="fa-solid fa-server"></i>
+      <span>Cấu hình & Vận hành (4.2)</span>
+    </a>
+  </div>
+</div>
+
+{% if active_tab == 'users' %}
+<!-- ========================================== -->
+<!-- TAB 1: QUẢN LÝ TÀI KHOẢN VÀ PHÂN QUYỀN (4.1) -->
+<!-- ========================================== -->
+
+<!-- STATS CARDS -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px;">
+  <div class="stat-card" style="background: #ffffff; padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Tổng người dùng</div>
+    <div style="font-size: 26px; font-weight: 800; color: var(--text-main);">{{ stats.total }}</div>
+    <div style="font-size: 11px; color: var(--success); margin-top: 4px;"><i class="fa-solid fa-circle-check"></i> Lưu trong MySQL</div>
+  </div>
+
+  <div class="stat-card" style="background: #ffffff; padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #2563eb; margin-bottom: 6px;">Sinh viên</div>
+    <div style="font-size: 26px; font-weight: 800; color: #2563eb;">{{ stats.students }}</div>
+    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Role: STUDENT</div>
+  </div>
+
+  <div class="stat-card" style="background: #ffffff; padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #059669; margin-bottom: 6px;">Giảng viên</div>
+    <div style="font-size: 26px; font-weight: 800; color: #059669;">{{ stats.lecturers }}</div>
+    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Role: LECTURER</div>
+  </div>
+
+  <div class="stat-card" style="background: #ffffff; padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #7c3aed; margin-bottom: 6px;">Cán bộ Quản lý</div>
+    <div style="font-size: 26px; font-weight: 800; color: #7c3aed;">{{ stats.academic_admins }}</div>
+    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Role: ACADEMIC_ADMIN</div>
+  </div>
+
+  <div class="stat-card" style="background: #ffffff; padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #e11d48; margin-bottom: 6px;">Quản trị viên</div>
+    <div style="font-size: 26px; font-weight: 800; color: #e11d48;">{{ stats.admins }}</div>
+    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Role: ADMIN</div>
+  </div>
+
+  <div class="stat-card" style="background: #ffffff; padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Khóa tài khoản</div>
+    <div style="font-size: 26px; font-weight: 800; color: {% if stats.locked > 0 %}#dc2626{% else %}var(--text-muted){% endif %};">{{ stats.locked }}</div>
+    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">{{ stats.active }} Đang hoạt động</div>
+  </div>
+</div>
+
+<!-- FILTER & ACTION BAR -->
+<div style="background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+  <form method="GET" action="{{ url_for('admin.manage_users') }}" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; flex: 1;">
+    <div style="position: relative; min-width: 260px;">
+      <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-subtle);"></i>
+      <input type="text" name="q" value="{{ keyword }}" placeholder="Tìm theo Mã số, Tên hoặc Email..." class="form-control" style="padding-left: 36px; height: 38px; width: 100%;">
+    </div>
+
+    <select name="role" class="form-control" style="height: 38px; width: auto;" onchange="this.form.submit()">
+      <option value="">-- Tất cả vai trò --</option>
+      <option value="STUDENT" {% if role_filter == 'STUDENT' %}selected{% endif %}>Sinh viên (STUDENT)</option>
+      <option value="LECTURER" {% if role_filter == 'LECTURER' %}selected{% endif %}>Giảng viên (LECTURER)</option>
+      <option value="ACADEMIC_ADMIN" {% if role_filter == 'ACADEMIC_ADMIN' %}selected{% endif %}>Cán bộ quản lý (ACADEMIC_ADMIN)</option>
+      <option value="ADMIN" {% if role_filter == 'ADMIN' %}selected{% endif %}>Quản trị viên (ADMIN)</option>
+    </select>
+
+    <select name="status" class="form-control" style="height: 38px; width: auto;" onchange="this.form.submit()">
+      <option value="">-- Trạng thái --</option>
+      <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Đang hoạt động</option>
+      <option value="locked" {% if status_filter == 'locked' %}selected{% endif %}>Đã bị khóa</option>
+    </select>
+
+    <button type="submit" class="btn btn-outline" style="height: 38px;">
+      <i class="fa-solid fa-filter"></i> Lọc dữ liệu
+    </button>
+    {% if role_filter or status_filter or keyword %}
+      <a href="{{ url_for('admin.manage_users') }}" class="btn btn-outline" style="height: 38px; color: var(--text-muted);" title="Đặt lại bộ lọc">
+        <i class="fa-solid fa-rotate-left"></i>
+      </a>
+    {% endif %}
+  </form>
+
+  <button onclick="openCreateUserModal()" class="btn btn-primary" style="height: 38px; display: inline-flex; align-items: center; gap: 8px;">
+    <i class="fa-solid fa-user-plus"></i>
+    <span>Thêm tài khoản mới (Vào DB)</span>
+  </button>
+</div>
+
+<!-- USERS DATA TABLE -->
+<div class="card" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+  <div style="padding: 14px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+    <span style="font-weight: 700; font-size: 14px; color: var(--text-main);">
+      Danh Sách Người Dùng Trong Hệ Thống ({{ users|length }} kết quả)
+    </span>
+    <span style="font-size: 12px; color: var(--text-muted);">
+      <i class="fa-solid fa-database"></i> Dữ liệu truy vấn trực tiếp từ CSDL MySQL / ORM
+    </span>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+      <thead>
+        <tr style="background: #f1f5f9; color: var(--text-muted); border-bottom: 1px solid var(--border-color);">
+          <th style="padding: 12px 16px; font-weight: 700;">Mã định danh</th>
+          <th style="padding: 12px 16px; font-weight: 700;">Họ và Tên</th>
+          <th style="padding: 12px 16px; font-weight: 700;">Email học viện</th>
+          <th style="padding: 12px 16px; font-weight: 700;">Vai trò (Role)</th>
+          <th style="padding: 12px 16px; font-weight: 700;">Học hàm / Vị trí</th>
+          <th style="padding: 12px 16px; font-weight: 700; text-align: center;">Trạng thái</th>
+          <th style="padding: 12px 16px; font-weight: 700; text-align: right;">Hành động & Phân quyền</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+            <td style="padding: 12px 16px; font-family: monospace; font-weight: 700; color: var(--primary);">
+              {{ u.user_code }}
+            </td>
+            <td style="padding: 12px 16px; font-weight: 600; color: var(--text-main);">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: var(--text-main);">
+                  {{ u.full_name[:1] }}
+                </div>
+                <span>{{ u.full_name }}</span>
+              </div>
+            </td>
+            <td style="padding: 12px 16px; color: var(--text-muted);">
+              {{ u.email }}
+            </td>
+            <td style="padding: 12px 16px;">
+              {% if u.role == 'STUDENT' %}
+                <span class="user-role-badge badge-student" style="font-size: 11px;"><i class="fa-solid fa-user-graduate"></i> Sinh viên</span>
+              {% elif u.role == 'LECTURER' %}
+                <span class="user-role-badge badge-lecturer" style="font-size: 11px;"><i class="fa-solid fa-chalkboard-user"></i> Giảng viên</span>
+              {% elif u.role == 'ACADEMIC_ADMIN' %}
+                <span class="user-role-badge badge-admin" style="font-size: 11px;"><i class="fa-solid fa-clipboard-check"></i> Cán bộ Quản lý</span>
+              {% elif u.role == 'ADMIN' %}
+                <span class="user-role-badge" style="background: rgba(225, 29, 72, 0.15); color: #e11d48; border-color: rgba(225, 29, 72, 0.3); font-size: 11px;"><i class="fa-solid fa-shield-halved"></i> Quản trị viên</span>
+              {% else %}
+                <span class="user-role-badge">{{ u.role }}</span>
+              {% endif %}
+            </td>
+            <td style="padding: 12px 16px; color: var(--text-main);">
+              {{ u.academic_title or '-' }}
+            </td>
+            <td style="padding: 12px 16px; text-align: center;">
+              {% if u.is_active %}
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2);">
+                  <i class="fa-solid fa-circle" style="font-size: 7px;"></i> Hoạt động
+                </span>
+              {% else %}
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; background: rgba(239, 68, 68, 0.1); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.2);">
+                  <i class="fa-solid fa-lock" style="font-size: 9px;"></i> Đã khóa
+                </span>
+              {% endif %}
+            </td>
+            <td style="padding: 12px 16px; text-align: right;">
+              <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
+                <!-- Form Đổi vai trò nhanh -->
+                <form method="POST" action="{{ url_for('admin.update_user_role', user_id=u.id) }}" style="display: inline-flex; align-items: center;">
+                  <select name="role" onchange="if(confirm('Bạn có chắc muốn đổi vai trò của người dùng này sang ' + this.value + '?')) this.form.submit(); else this.selectedIndex = 0;" style="height: 28px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 4px; padding: 0 4px; background: #ffffff;">
+                    <option value="" disabled selected>Đổi vai trò...</option>
+                    <option value="STUDENT">Sinh viên</option>
+                    <option value="LECTURER">Giảng viên</option>
+                    <option value="ACADEMIC_ADMIN">CB Quản lý</option>
+                    <option value="ADMIN">Quản trị viên</option>
+                  </select>
+                </form>
+
+                <!-- Form Khóa / Mở khóa -->
+                <form method="POST" action="{{ url_for('admin.toggle_user_status', user_id=u.id) }}" style="display: inline;">
+                  {% if u.is_active %}
+                    <button type="submit" class="btn btn-outline" style="height: 28px; padding: 0 8px; font-size: 11px; color: #dc2626; border-color: rgba(239, 68, 68, 0.3);" title="Khóa tài khoản">
+                      <i class="fa-solid fa-lock"></i> Khóa
+                    </button>
+                  {% else %}
+                    <button type="submit" class="btn btn-outline" style="height: 28px; padding: 0 8px; font-size: 11px; color: #059669; border-color: rgba(16, 185, 129, 0.3);" title="Mở khóa tài khoản">
+                      <i class="fa-solid fa-lock-open"></i> Mở
+                    </button>
+                  {% endif %}
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="7" style="padding: 40px; text-align: center; color: var(--text-muted);">
+              <i class="fa-solid fa-user-slash" style="font-size: 32px; margin-bottom: 12px; color: var(--text-subtle); display: block;"></i>
+              Không tìm thấy người dùng nào phù hợp với bộ lọc hiện tại.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL THÊM TÀI KHOẢN MỚI (VÀO DATABASE) -->
+<div id="createUserModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+  <div style="background: #ffffff; border-radius: var(--radius-lg); width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); overflow: hidden; animation: modalFade 0.2s ease;">
+    <div style="padding: 18px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+      <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-user-plus" style="color: var(--primary);"></i> Thêm Tài Khoản Mới Vào CSDL
+      </h3>
+      <button onclick="closeCreateUserModal()" style="border: none; background: transparent; cursor: pointer; color: var(--text-muted); font-size: 18px;">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.manage_users') }}" style="padding: 24px;">
+      <input type="hidden" name="action" value="create">
+
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
+          Vai trò người dùng <span style="color: #dc2626;">*</span>
+        </label>
+        <select name="role" id="new_user_role" required class="form-control" style="width: 100%; height: 40px;" onchange="updateRolePlaceholder(this.value)">
+          <option value="STUDENT">Sinh viên (STUDENT)</option>
+          <option value="LECTURER">Giảng viên (LECTURER)</option>
+          <option value="ACADEMIC_ADMIN">Cán bộ Quản lý (ACADEMIC_ADMIN)</option>
+          <option value="ADMIN">Quản trị viên (ADMIN)</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:13px;font-weight:700;margin-bottom:6px;">Đơn vị xử lý (Helpdesk/Chuyên viên)</label>
+      </div>
+
+      <div id="student-class-field" style="margin-bottom: 14px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Lớp chuyên ngành <span style="color: #dc2626;">*</span></label>
+        <select name="administrative_class_id" id="new_user_class" class="form-control" style="width: 100%; height: 40px;">
+          <option value="">-- Chọn lớp chuyên ngành --</option>
+          {% for cls in administrative_classes %}
+          <option value="{{ cls.id }}">{{ cls.class_code }} — {{ cls.program_name }}</option>
+          {% endfor %}
+        </select>
+        {% if not administrative_classes %}<small>Chưa có lớp. <a href="{{ url_for('students.view_students') }}">Tạo lớp chuyên ngành</a> trước.</small>{% endif %}
+      </div>
+
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
+          Mã định danh (MSSV / MSGV / Mã CB) <span style="color: #dc2626;">*</span>
+        </label>
+        <input type="text" id="input_user_code" name="user_code" required inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" title="Mã định danh gồm đúng 8 chữ số" placeholder="Nhập mã định danh gồm 8 chữ số" class="form-control" style="width: 100%; height: 40px;">
+      </div>
+
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
+          Họ và tên đầy đủ <span style="color: #dc2626;">*</span>
+        </label>
+        <input type="text" id="input_full_name" name="full_name" required placeholder="Nhập họ và tên" oninput="updateEmailPreview()" class="form-control" style="width: 100%; height: 40px;">
+      </div>
+
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
+          Email NEU <span id="email-required-mark" style="color: #dc2626;">*</span>
+        </label>
+        <input type="email" id="input_email" name="email" required readonly placeholder="Email được tạo tự động theo tên" class="form-control" style="width: 100%; height: 40px; background: #f8fafc;">
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
+          Học hàm / Học vị (Nếu là Giảng viên / CB)
+        </label>
+        <input type="text" name="academic_title" placeholder="Ví dụ: TS., ThS., PGS.TS. (để trống nếu là Sinh viên)" class="form-control" style="width: 100%; height: 40px;">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+        <button type="button" onclick="closeCreateUserModal()" class="btn btn-outline" style="height: 38px;">Hủy bỏ</button>
+        <button type="submit" class="btn btn-primary" style="height: 38px; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa-solid fa-save"></i>
+          <span>Lưu vào CSDL MySQL</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openCreateUserModal() {
+  const m = document.getElementById('createUserModal');
+  m.style.display = 'flex';
+}
+function closeCreateUserModal() {
+  const m = document.getElementById('createUserModal');
+  m.style.display = 'none';
+}
+function updateRolePlaceholder(role) {
+  const input = document.getElementById('input_user_code');
+  const classField = document.getElementById('student-class-field');
+  const classSelect = document.getElementById('new_user_class');
+  classField.style.display = role === 'STUDENT' ? 'block' : 'none';
+  classSelect.required = role === 'STUDENT';
+  if (role === 'STUDENT') {
+    input.placeholder = 'Nhập MSSV gồm 8 chữ số';
+  } else if (role === 'LECTURER') {
+    input.placeholder = 'Nhập mã giảng viên gồm 8 chữ số';
+  } else if (role === 'ACADEMIC_ADMIN') {
+    input.placeholder = 'Nhập mã cán bộ gồm 8 chữ số';
+  } else {
+    input.placeholder = 'Nhập mã quản trị gồm 8 chữ số';
+  }
+  updateEmailPreview();
+}
+function updateEmailPreview() {
+  const role = document.querySelector('#createUserModal select[name="role"]').value;
+  const fullName = document.getElementById('input_full_name').value.trim();
+  const email = document.getElementById('input_email');
+  if (!fullName) {
+    email.value = '';
+    return;
+  }
+  if (role === 'STUDENT') {
+    const userCode = document.getElementById('input_user_code').value.trim();
+    email.value = userCode ? `${userCode}@st.neu.edu.vn` : '';
+    return;
+  }
+  const parts = fullName.normalize('NFKD').replace(/[Đđ]/g, c => c === 'Đ' ? 'D' : 'd').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/).filter(Boolean);
+  const username = parts.length > 1 ? parts.slice(0, -1).map(part => part[0]).join('') + parts[parts.length - 1] : parts[0];
+  email.value = `${username}@neu.edu.vn`;
+}
+document.getElementById('input_user_code').addEventListener('input', updateEmailPreview);
+updateRolePlaceholder(document.querySelector('#createUserModal select[name="role"]').value);
+</script>
+
+{% elif active_tab == 'system' %}
+<!-- ========================================== -->
+<!-- TAB 2: CẤU HÌNH VÀ VẬN HÀNH HỆ THỐNG (4.2) -->
+<!-- ========================================== -->
+
+<!-- SYSTEM METRICS & HEALTH MONITOR -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+  <div style="background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Cơ sở dữ liệu</span>
+      <span style="padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; background: rgba(16, 185, 129, 0.1); color: #059669;">
+        <i class="fa-solid fa-signal"></i> ONLINE
+      </span>
+    </div>
+    <div style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">{{ metrics.db_type }}</div>
+    <div style="font-size: 12px; color: var(--text-muted); font-family: monospace;">{{ metrics.db_host }}:{{ metrics.db_port }}/{{ metrics.db_name }}</div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Môi trường máy chủ</span>
+      <span style="color: var(--primary); font-size: 13px;"><i class="fa-brands fa-python"></i></span>
+    </div>
+    <div style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Python {{ metrics.python_version }}</div>
+    <div style="font-size: 12px; color: var(--text-muted);">{{ metrics.os_info }}</div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Học liệu & Khảo thí</span>
+      <span style="color: #7c3aed; font-size: 13px;"><i class="fa-solid fa-folder-tree"></i></span>
+    </div>
+    <div style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">{{ metrics.materials_count }} Học liệu • {{ metrics.questions_count }} Câu hỏi</div>
+    <div style="font-size: 12px; color: var(--text-muted);">{{ metrics.courses_count }} Môn học đang vận hành</div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Giám sát & Hỗ trợ</span>
+      <span style="color: #f59e0b; font-size: 13px;"><i class="fa-solid fa-chart-line"></i></span>
+    </div>
+    <div style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">{{ metrics.telemetry_count }} Telemetry Logs</div>
+    <div style="font-size: 12px; color: var(--text-muted);">{{ metrics.tickets_count }} Phiếu hỗ trợ sinh viên</div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 24px; margin-bottom: 24px;">
+  <!-- FORM CẤU HÌNH THAM SỐ HỆ THỐNG -->
+  <div class="card" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-sliders" style="color: var(--primary);"></i> Cấu Hình Tham Số Hệ Thống (4.2)
+      </h3>
+      <span style="font-size: 12px; color: var(--text-muted);">Lưu bảng `system_settings`</span>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.system_config') }}" style="padding: 20px;">
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Tên Hệ thống Nền tảng</label>
+        <input type="text" name="system_title" value="{{ settings.system_title }}" class="form-control" style="width: 100%; height: 38px;">
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Đơn vị chủ quản / Học viện</label>
+        <input type="text" name="institution_name" value="{{ settings.institution_name }}" class="form-control" style="width: 100%; height: 38px;">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+        <div>
+          <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Giới hạn tải lên tối đa (MB)</label>
+          <input type="number" name="max_upload_size_mb" value="{{ settings.max_upload_size_mb }}" class="form-control" style="width: 100%; height: 38px;">
+        </div>
+        <div>
+          <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Chế độ bảo trì (Maintenance)</label>
+          <select name="maintenance_mode" class="form-control" style="width: 100%; height: 38px;">
+            <option value="OFF" {% if settings.maintenance_mode == 'OFF' %}selected{% endif %}>Tắt (Hoạt động bình thường)</option>
+            <option value="ON" {% if settings.maintenance_mode == 'ON' %}selected{% endif %}>Bật (Chỉ Admin truy cập)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+        <div>
+          <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Watermark DRM Động</label>
+          <select name="default_drm_watermark" class="form-control" style="width: 100%; height: 38px;">
+            <option value="ENABLED" {% if settings.default_drm_watermark == 'ENABLED' %}selected{% endif %}>Bắt buộc (Đóng dấu MSSV + IP)</option>
+            <option value="OPTIONAL" {% if settings.default_drm_watermark == 'OPTIONAL' %}selected{% endif %}>Tùy chọn theo học liệu</option>
+          </select>
+        </div>
+        <div>
+          <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Trợ lý AI Copilot Chatbot 24/7</label>
+          <select name="ai_copilot_enabled" class="form-control" style="width: 100%; height: 38px;">
+            <option value="ENABLED" {% if settings.ai_copilot_enabled == 'ENABLED' %}selected{% endif %}>Kích hoạt toàn hệ thống</option>
+            <option value="DISABLED" {% if settings.ai_copilot_enabled == 'DISABLED' %}selected{% endif %}>Tạm dừng</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Mô hình LLM Tích hợp</label>
+        <input type="text" name="ai_model_name" value="{{ settings.ai_model_name }}" class="form-control" style="width: 100%; height: 38px;">
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="height: 40px; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-floppy-disk"></i>
+        <span>Lưu Cấu Hình Tham Số</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- SAO LƯU DỮ LIỆU & BACKUP (4.2) -->
+  <div class="card" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-cloud-arrow-up" style="color: #059669;"></i> Sao Lưu CSDL Định Kỳ (4.2)
+      </h3>
+      <form method="POST" action="{{ url_for('admin.backup_database') }}">
+        <button type="submit" class="btn btn-primary" style="height: 32px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: #059669; border-color: #059669;">
+          <i class="fa-solid fa-database"></i> Sao lưu ngay
+        </button>
+      </form>
+    </div>
+
+    <div style="padding: 20px;">
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+        Hệ thống hỗ trợ tạo bản snapshot cấu trúc và toàn bộ dữ liệu CSDL MySQL / SQLite để đảm bảo an toàn thông tin và phục hồi khi có sự cố.
+      </p>
+
+      <div style="font-size: 13px; font-weight: 700; margin-bottom: 10px; color: var(--text-main);">
+        Các bản sao lưu gần nhất ({{ backups|length }} bản):
+      </div>
+
+      <div style="max-height: 280px; overflow-y: auto;">
+        {% if backups %}
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            {% for b in backups %}
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <div>
+                  <div style="font-weight: 700; font-family: monospace; font-size: 12px; color: var(--primary);">
+                    <i class="fa-regular fa-file-code"></i> {{ b.filename }}
+                  </div>
+                  <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                    {{ b.created_at }} • {{ b.size_kb }} KB
+                  </div>
+                </div>
+                <a href="{{ url_for('admin.download_backup', filename=b.filename) }}" class="btn btn-outline" style="height: 28px; padding: 0 10px; font-size: 11px;" title="Tải bản sao lưu">
+                  <i class="fa-solid fa-download"></i> Tải về
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div style="padding: 30px; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--radius-sm);">
+            <i class="fa-solid fa-box-archive" style="font-size: 24px; margin-bottom: 8px; color: var(--text-subtle); display: block;"></i>
+            Chưa có bản sao lưu nào. Hãy bấm "Sao lưu ngay" để tạo bản snapshot đầu tiên.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AUDIT LOGS -->
+<div class="card" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+  <div style="padding: 14px 20px; border-bottom: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+    <h3 style="margin: 0; font-size: 14px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+      <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i> Nhật Ký Kiểm Toán Vận Hành Hệ Thống (Audit Logs)
+    </h3>
+    <span style="font-size: 12px; color: var(--text-muted);">20 hoạt động gần nhất</span>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
+      <thead>
+        <tr style="background: #f1f5f9; color: var(--text-muted); border-bottom: 1px solid var(--border-color);">
+          <th style="padding: 10px 16px; font-weight: 700;">Thời gian (UTC)</th>
+          <th style="padding: 10px 16px; font-weight: 700;">Người thực hiện</th>
+          <th style="padding: 10px 16px; font-weight: 700;">Hành động</th>
+          <th style="padding: 10px 16px; font-weight: 700;">Đối tượng</th>
+          <th style="padding: 10px 16px; font-weight: 700;">Chi tiết tác vụ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in audit_logs %}
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 10px 16px; color: var(--text-muted); font-family: monospace;">
+              {{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+            </td>
+            <td style="padding: 10px 16px; font-weight: 700; color: var(--text-main);">
+              {{ log.actor.full_name if log.actor else 'Hệ thống (SYSTEM)' }}
+            </td>
+            <td style="padding: 10px 16px;">
+              <span style="font-weight: 700; font-family: monospace; color: var(--primary);">{{ log.action }}</span>
+            </td>
+            <td style="padding: 10px 16px; color: var(--text-main);">
+              {{ log.target_entity or '-' }}
+            </td>
+            <td style="padding: 10px 16px; color: var(--text-muted);">
+              {{ log.details or '-' }}
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5" style="padding: 24px; text-align: center; color: var(--text-muted);">
+              Chưa có ghi nhận nhật ký kiểm toán nào.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

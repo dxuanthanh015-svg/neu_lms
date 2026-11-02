@@ -1,0 +1,642 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Sinh viên & Lớp học phần | {% if selected_section %}{{ selected_section.display_name }}{% else %}LMS M10{% endif %}{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb Trail & Top Bar -->
+<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+  <div class="breadcrumb-trail" style="margin-bottom: 0;">
+    <a href="{{ url_for('curriculum.view_curriculum') }}"><i class="fa-solid fa-house-chimney"></i> Học viện</a>
+    <span>/</span>
+    <a href="{{ url_for('students.view_students') }}">Lớp học phần</a>
+    <span>/</span>
+    <span>{% if selected_section %}{{ selected_section.section_code }} - {{ selected_section.display_name }}{% else %}Quản trị sinh viên{% endif %}</span>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+    <!-- Section Switcher -->
+    {% if all_sections %}
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <span style="font-size: 12px; font-weight: 700; color: var(--text-muted);"><i class="fa-solid fa-chalkboard-user"></i> Lớp HP:</span>
+      <select onchange="window.location.href='{{ url_for('students.view_students') }}?section_id=' + this.value" style="height: 36px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; padding: 0 10px; background: #ffffff;">
+        <option value="" {% if not selected_section %}selected{% endif %}>-- Chọn lớp học phần --</option>
+        {% for s in all_sections %}
+          <option value="{{ s.id }}" {% if selected_section and selected_section.id == s.id %}selected{% endif %}>
+            {{ s.section_code }} - {{ s.display_name }} ({{ s.enrollments|length }}/{{ s.max_capacity }} SV)
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    {% if current_user and current_user.role in ['LECTURER', 'ACADEMIC_ADMIN', 'ADMIN'] %}
+      {% if current_user.role in ['ACADEMIC_ADMIN', 'ADMIN'] %}
+      <button onclick="openModal('modal-create-admin-class')" class="btn btn-outline" style="height: 36px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: #fff;">
+        <i class="fa-solid fa-people-group"></i> + Tạo Lớp Chuyên Ngành
+      </button>
+      {% endif %}
+      <button onclick="openModal('modal-create-section')" class="btn btn-outline" style="height: 36px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: #ffffff;">
+        <i class="fa-solid fa-folder-plus"></i> + Tạo Lớp Học Phần Mới
+      </button>
+    {% endif %}
+  </div>
+</div>
+
+{% if current_user and current_user.role in ['ACADEMIC_ADMIN', 'ADMIN'] %}
+<section class="lesson-main-card" style="margin-bottom: 20px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px;">
+    <div>
+      <h2 style="margin:0 0 4px; font-size:16px; color:var(--text-main);">Lớp chuyên ngành</h2>
+      <p style="margin:0; font-size:12px; color:var(--text-muted);">Xếp sinh viên vào lớp chuyên ngành trước khi ghi danh lớp học phần.</p>
+    </div>
+    <span class="tab-counter-badge">{{ classes|length }} lớp</span>
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px;">
+    {% for cls in classes %}
+    <article style="border:1px solid var(--border-color); border-radius:var(--radius-md); padding:14px; background:#fff;">
+      <div style="font-size:11px; color:var(--primary); font-weight:800; text-transform:uppercase;">{{ cls.cohort }}</div>
+      <h3 style="margin:5px 0; font-size:15px; color:var(--text-main);">{{ cls.class_code }}</h3>
+      <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">{{ cls.program_name }} · {{ cls.students|length }} sinh viên</div>
+      <button type="button" class="btn btn-outline" style="height:32px; font-size:12px;" onclick="openClassAssignment('{{ cls.id }}','{{ cls.class_code }}')">
+        <i class="fa-solid fa-user-plus"></i> Xếp sinh viên vào lớp
+      </button>
+    </article>
+    {% else %}
+    <div class="empty-state-card" style="grid-column:1/-1; padding:24px;">Chưa có lớp chuyên ngành. Hãy tạo lớp trước khi xếp sinh viên.</div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if current_user and current_user.role == 'STUDENT' %}
+<section class="lesson-main-card">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">
+    <div>
+      <h1 style="margin:0 0 4px;font-size:20px;color:var(--text-main);">Lớp học phần của tôi</h1>
+      <p style="margin:0;font-size:13px;color:var(--text-muted);">Các lớp học phần bạn đã được ghi danh.</p>
+    </div>
+    <span class="tab-counter-badge">{{ enrollments|length }} lớp</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;">
+    {% for enrollment in enrollments %}
+    <article style="border:1px solid var(--border-color);border-radius:var(--radius-md);padding:16px;background:#fff;">
+      <span class="badge-code">{{ enrollment.section.section_code }}</span>
+      <h2 style="margin:10px 0 5px;font-size:16px;color:var(--text-main);">{{ enrollment.section.display_name }}</h2>
+      <div style="font-size:13px;color:var(--text-body);">{{ enrollment.section.course.course_code }} · {{ enrollment.section.course.title_vi }}</div>
+      <div style="margin-top:10px;font-size:12px;color:var(--text-muted);">
+        {% if enrollment.section.semester %}{{ enrollment.section.semester }}{% endif %}
+        {% if enrollment.section.academic_year %} · {{ enrollment.section.academic_year }}{% endif %}
+      </div>
+      {% if enrollment.lab_group %}<div style="margin-top:8px;font-size:12px;color:var(--text-muted);">Nhóm thực hành: {{ enrollment.lab_group }}</div>{% endif %}
+    </article>
+    {% else %}
+    <div class="empty-state-card" style="grid-column:1/-1;padding:36px 20px;">Bạn chưa được ghi danh vào lớp học phần nào.</div>
+    {% endfor %}
+  </div>
+</section>
+{% elif selected_section %}
+<!-- SECTION BANNER CARD -->
+<div class="course-banner-card" style="margin-bottom: 24px;">
+  <div class="course-banner-left">
+    <div class="banner-badges-row">
+      <span class="badge-code">{{ selected_section.section_code }}</span>
+      <span class="badge-credits">Sĩ số hiện tại: <strong>{{ enrollments|length }}</strong> / {{ selected_section.max_capacity }} Sinh viên</span>
+      <span class="mat-pill mat-pill-blue"><i class="fa-solid fa-calendar-days"></i> {{ selected_section.day_of_week or 'Thứ 2' }} • {{ selected_section.period_slot or 'Tiết 1-3' }}</span>
+      <span class="mat-pill mat-pill-teal"><i class="fa-solid fa-location-dot"></i> {{ selected_section.physical_room or 'Phòng 302-G2' }}</span>
+      <span class="badge-status-teaching"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> Đang giảng dạy</span>
+    </div>
+    <h1 class="course-main-title">{{ selected_section.display_name }}</h1>
+    <p class="course-sub-desc">
+      Học kỳ: <strong>{{ selected_section.semester or 'Học kỳ I' }}</strong> • Năm học: <strong>{{ selected_section.academic_year or '2024 - 2025' }}</strong> • Môn học: <strong>{{ selected_section.course_id }}</strong>. Quản lý danh sách sinh viên ghi danh, theo dõi chuyên cần, phân nhóm thực hành Lab và đánh giá năng lực.
+    </p>
+  </div>
+</div>
+
+<!-- Students Table Card -->
+<div class="lesson-main-card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <div style="font-size: 15px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+      <i class="fa-solid fa-user-graduate" style="color: var(--primary);"></i>
+      <span>Danh sách Sinh viên ghi danh vào lớp</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span class="tab-counter-badge" style="font-size: 12px;">Tổng cộng: {{ enrollments|length }} SV</span>
+      {% if current_user and current_user.role in ['LECTURER', 'ACADEMIC_ADMIN', 'ADMIN'] %}
+      <button onclick="openAddStudentModal()" class="btn-primary" style="height: 32px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+        <i class="fa-solid fa-plus"></i> Thêm SV
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--border-color); text-align: left; background-color: #f8fafc;">
+          <th style="padding: 12px 14px; font-weight: 700; color: var(--text-muted);">STT</th>
+          <th style="padding: 12px 14px; font-weight: 700; color: var(--text-muted);">MSSV</th>
+          <th style="padding: 12px 14px; font-weight: 700; color: var(--text-muted);">HỌ VÀ TÊN</th>
+          <th style="padding: 12px 14px; font-weight: 700; color: var(--text-muted);">EMAIL HỌC VIỆN</th>
+          <th style="padding: 12px 14px; font-weight: 700; color: var(--text-muted);">LỚP CHUYÊN NGÀNH</th>
+          <th style="padding: 12px 14px; font-weight: 700; color: var(--text-muted);">NHÓM LAB</th>
+          <th style="padding: 12px 14px; font-weight: 700; color: var(--text-muted);">CHUYÊN CẦN</th>
+          <th style="padding: 12px 14px; font-weight: 700; color: var(--text-muted);">TRẠNG THÁI</th>
+          {% if current_user and current_user.role in ['LECTURER', 'ACADEMIC_ADMIN', 'ADMIN'] %}
+          <th style="padding: 12px 14px; font-weight: 700; color: var(--text-muted); text-align: center;">THAO TÁC</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for enr in enrollments %}
+        <tr style="border-bottom: 1px solid var(--border-light); transition: background-color 0.15s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='transparent'">
+          <td style="padding: 12px 14px; color: var(--text-subtle); font-weight: 600;">{{ loop.index }}</td>
+          <td style="padding: 12px 14px; font-weight: 700; color: var(--primary);">{{ enr.student.user_code }}</td>
+          <td style="padding: 12px 14px; font-weight: 700; color: var(--text-main);">{{ enr.student.full_name }}</td>
+          <td style="padding: 12px 14px; color: var(--text-muted);">{{ enr.student.email }}</td>
+          <td style="padding: 12px 14px;"><span class="badge-credits">{{ enr.administrative_class.class_code if enr.administrative_class else 'Chưa phân lớp' }}</span></td>
+          <td style="padding: 12px 14px; color: var(--text-body);">{{ enr.lab_group or 'Nhóm 1' }}</td>
+          <td style="padding: 12px 14px; font-weight: 700;">
+            {% if enr.attendance_percentage >= 90 %}
+              <span style="color: var(--success);">{{ enr.attendance_percentage }}%</span>
+            {% elif enr.attendance_percentage >= 80 %}
+              <span style="color: var(--primary);">{{ enr.attendance_percentage }}%</span>
+            {% else %}
+              <span style="color: var(--danger);">{{ enr.attendance_percentage }}% (Vắng {{ enr.consecutive_absences }}b)</span>
+            {% endif %}
+          </td>
+          <td style="padding: 12px 14px;">
+            {% if enr.study_status == 'WARNING' %}
+              <span class="mat-pill mat-pill-orange"><i class="fa-solid fa-triangle-exclamation"></i> Cảnh báo vắng</span>
+            {% else %}
+              <span class="mat-pill mat-pill-green"><i class="fa-solid fa-circle-check"></i> Đang học</span>
+            {% endif %}
+          </td>
+          {% if current_user and current_user.role in ['LECTURER', 'ACADEMIC_ADMIN', 'ADMIN'] %}
+          <td style="padding: 12px 14px; text-align: center;">
+            <button onclick="unenrollStudent('{{ selected_section.id }}', '{{ enr.student.id }}', '{{ enr.student.full_name }}')" class="btn btn-outline" style="height: 28px; padding: 0 8px; font-size: 11px; color: #dc2626; border-color: #fca5a5;" title="Xóa sinh viên khỏi lớp">
+              <i class="fa-solid fa-user-minus"></i> Xóa
+            </button>
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
+            <i class="fa-regular fa-folder-open" style="font-size: 32px; margin-bottom: 12px; display: block; color: var(--text-subtle);"></i>
+            <div style="font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">Chưa có dữ liệu sinh viên trong lớp học phần này</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Nhấn nút bên dưới để ghi danh sinh viên vào lớp học phần.</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% elif all_sections %}
+<section class="lesson-main-card">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">
+    <div>
+      <h1 style="margin:0 0 4px;font-size:20px;color:var(--text-main);">Lớp học phần</h1>
+      <p style="margin:0;font-size:13px;color:var(--text-muted);">Chọn một lớp để xem danh sách và ghi danh sinh viên.</p>
+    </div>
+    <span class="tab-counter-badge">{{ all_sections|length }} lớp</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+    {% for section in all_sections %}
+    <article style="border:1px solid var(--border-color);border-radius:var(--radius-md);padding:16px;background:#fff;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <span class="badge-code">{{ section.section_code }}</span>
+        <span class="badge-credits">{{ section.enrollments|length }}/{{ section.max_capacity }} SV</span>
+      </div>
+      <h2 style="margin:12px 0 5px;font-size:16px;color:var(--text-main);">{{ section.display_name }}</h2>
+      <div style="font-size:13px;color:var(--text-body);">{{ section.course.course_code }} · {{ section.course.title_vi }}</div>
+      <div style="margin:8px 0 14px;font-size:12px;color:var(--text-muted);">
+        {% if section.semester %}{{ section.semester }}{% endif %}
+        {% if section.academic_year %} · {{ section.academic_year }}{% endif %}
+        {% if section.day_of_week %} · {{ section.day_of_week }}{% endif %}
+      </div>
+      <a href="{{ url_for('students.view_students', section_id=section.id) }}" class="btn-primary" style="height:36px;display:inline-flex;align-items:center;gap:7px;text-decoration:none;font-size:12px;">
+        <i class="fa-solid fa-user-plus"></i> Mở lớp / Thêm sinh viên
+      </a>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<!-- EMPTY STATE KHI CHƯA CÓ LỚP HỌC PHẦN NÀO -->
+<div class="lesson-main-card" style="text-align: center; padding: 60px 20px;">
+  <div style="width: 64px; height: 64px; border-radius: 50%; background: #eff6ff; color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px;">
+    <i class="fa-solid fa-chalkboard-user"></i>
+  </div>
+  <h2 style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">
+    Chưa có Lớp học phần nào trong Hệ thống
+  </h2>
+  <p style="font-size: 13px; color: var(--text-muted); max-width: 500px; margin: 0 auto 20px; line-height: 1.5;">
+    Giảng viên hoặc Cán bộ quản lý hãy tạo một lớp học phần mới để bắt đầu ghi danh sinh viên và tổ chức giảng dạy.
+  </p>
+  {% if current_user and current_user.role in ['LECTURER', 'ACADEMIC_ADMIN', 'ADMIN'] %}
+  <button onclick="openModal('modal-create-section')" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px;">
+    <i class="fa-solid fa-folder-plus"></i> + Tạo Lớp Học Phần Mới Ngay
+  </button>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if current_user and current_user.role in ['ACADEMIC_ADMIN', 'ADMIN'] %}
+<div id="modal-create-admin-class" class="modal-backdrop" style="display:none;">
+  <div class="modal-card" style="max-width:520px;">
+    <div class="modal-header"><div class="modal-title"><i class="fa-solid fa-people-group"></i><span>Tạo lớp chuyên ngành</span></div><button class="modal-close" onclick="closeModal('modal-create-admin-class')">&times;</button></div>
+    <form method="POST" action="{{ url_for('students.create_administrative_class') }}">
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">Mã lớp</label><input name="class_code" required class="form-input" placeholder="Ví dụ: K68-KTQT"></div>
+        <div class="form-group"><label class="form-label">Chương trình / ngành</label><input name="program_name" required class="form-input" placeholder="Nhập tên chương trình đào tạo"></div>
+        <div class="form-group"><label class="form-label">Khóa</label><input name="cohort" required class="form-input" placeholder="Ví dụ: K68"></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn-secondary" onclick="closeModal('modal-create-admin-class')">Hủy</button><button type="submit" class="btn-primary"><i class="fa-solid fa-save"></i> Tạo lớp</button></div>
+    </form>
+  </div>
+</div>
+
+<div id="modal-assign-class-students" class="modal-backdrop" style="display:none;">
+  <div class="modal-card" style="max-width:640px; max-height:90vh; overflow:auto;">
+    <div class="modal-header"><div class="modal-title"><i class="fa-solid fa-user-group"></i><span>Xếp sinh viên vào lớp <strong id="assign-class-title"></strong></span></div><button class="modal-close" onclick="closeModal('modal-assign-class-students')">&times;</button></div>
+    <form id="assign-class-form" method="POST">
+      <div class="modal-body">
+        <label style="display:flex; gap:8px; align-items:center; padding:10px 12px; border:1px solid var(--border-color); border-radius:var(--radius-sm); margin-bottom:10px; font-weight:700;">
+          <input type="checkbox" id="assign-all-students" onchange="toggleAssignAll(this.checked)"> Chọn tất cả sinh viên
+        </label>
+        <div id="assign-student-list" style="display:grid; gap:6px;"></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn-secondary" onclick="closeModal('modal-assign-class-students')">Hủy</button><button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Lưu phân lớp</button></div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ================= MODAL: THÊM SINH VIÊN VÀO LỚP HỌC PHẦN ================= -->
+<div id="modal-add-student" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+  <div style="background: #ffffff; border-radius: var(--radius-lg); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg);">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+      <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-user-plus" style="color: var(--primary);"></i> Thêm Sinh Viên Vào Lớp Học Phần
+      </h3>
+      <button onclick="closeModal('modal-add-student')" style="border: none; background: transparent; cursor: pointer; color: var(--text-muted); font-size: 18px;">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <form onsubmit="submitEnrollStudent(event)" style="padding: 20px;">
+      <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 16px; font-size: 12px; color: #1e40af;">
+        Lớp đang chọn: <strong>{{ selected_section.display_name if selected_section else 'Chưa chọn lớp' }}</strong> ({{ selected_section.section_code if selected_section else '' }})
+      </div>
+
+      <div id="enroll-class-step">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Bước 1 · Chọn lớp chuyên ngành</div>
+        <div id="enroll-class-list" style="display:grid;gap:8px;max-height:250px;overflow:auto;"></div>
+      </div>
+
+      <div id="enroll-student-step" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+          <button type="button" class="btn btn-outline" style="height:32px;" onclick="backToAdminClasses()"><i class="fa-solid fa-arrow-left"></i> Lớp chuyên ngành</button>
+          <strong id="enroll-class-heading" style="font-size:13px;"></strong>
+        </div>
+        <label style="display:flex;gap:8px;align-items:center;padding:10px 12px;border:1px solid var(--border-color);border-radius:var(--radius-sm);margin-bottom:8px;font-weight:700;">
+          <input type="checkbox" id="enroll-select-all" onchange="toggleEnrollAll(this.checked)"> Chọn tất cả sinh viên trong lớp
+        </label>
+        <div id="enroll-student-list" style="display:grid;gap:6px;max-height:260px;overflow:auto;"></div>
+      </div>
+
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Nhóm thực hành Lab</label>
+        <select id="enroll_lab_group" class="form-control" style="width: 100%; height: 38px; font-size: 13px;">
+          <option value="Nhóm 1">Nhóm 1 (Lab sáng Thứ 4)</option>
+          <option value="Nhóm 2">Nhóm 2 (Lab chiều Thứ 4)</option>
+          <option value="Nhóm 3">Nhóm 3 (Lab sáng Thứ 6)</option>
+          <option value="Tự do">Nhóm Tự do / Độc lập</option>
+        </select>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+        <button type="button" onclick="closeModal('modal-add-student')" class="btn btn-outline" style="height: 38px;">Hủy bỏ</button>
+        <button type="submit" id="btn-submit-enroll" class="btn btn-primary" style="height: 38px; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa-solid fa-check"></i>
+          <span>Thêm sinh viên đã chọn</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= MODAL: TẠO LỚP HỌC PHẦN MỚI ================= -->
+<div id="modal-create-section" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+  <div style="background: #ffffff; border-radius: var(--radius-lg); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg);">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+      <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-folder-plus" style="color: var(--primary);"></i> Tạo Lớp Học Phần Mới
+      </h3>
+      <button onclick="closeModal('modal-create-section')" style="border: none; background: transparent; cursor: pointer; color: var(--text-muted); font-size: 18px;">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <form onsubmit="submitCreateSection(event)" style="padding: 20px;">
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Môn học <span style="color: #dc2626;">*</span></label>
+        <select id="sec_course_id" required class="form-control" style="width: 100%; height: 38px; font-size: 13px;">
+          {% for c in all_courses %}
+            <option value="{{ c.id }}">{{ c.course_code }} - {{ c.title_vi }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+        <div>
+          <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Mã lớp học phần <span style="color: #dc2626;">*</span></label>
+          <input type="text" id="sec_code" required class="form-control" placeholder="Ví dụ: INT3110-02" style="width: 100%; height: 38px;">
+        </div>
+        <div>
+          <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Sĩ số tối đa</label>
+          <input type="number" id="sec_capacity" value="60" min="10" max="150" class="form-control" style="width: 100%; height: 38px;">
+        </div>
+      </div>
+
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Tên hiển thị lớp học phần <span style="color: #dc2626;">*</span></label>
+        <input type="text" id="sec_display_name" required class="form-control" placeholder="Ví dụ: Lớp học phần Phát triển Web - Nhóm 02" style="width: 100%; height: 38px;">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+        <div>
+          <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Lịch học</label>
+          <input type="text" id="sec_day" value="Thứ 4" class="form-control" style="width: 100%; height: 38px;">
+        </div>
+        <div>
+          <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">Phòng học</label>
+          <input type="text" id="sec_room" value="Phòng 401-G2" class="form-control" style="width: 100%; height: 38px;">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+        <button type="button" onclick="closeModal('modal-create-section')" class="btn btn-outline" style="height: 38px;">Hủy bỏ</button>
+        <button type="submit" id="btn-submit-section" class="btn btn-primary" style="height: 38px; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa-solid fa-save"></i>
+          <span>Xác nhận tạo lớp học phần</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const classRosters = {{ class_rosters|tojson }};
+const studentAssignments = {{ student_assignments|tojson }};
+let selectedEnrollClassId = '';
+
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'flex';
+}
+
+function openAddStudentModal() {
+  selectedEnrollClassId = '';
+  document.getElementById('enroll-class-step').style.display = 'block';
+  document.getElementById('enroll-student-step').style.display = 'none';
+  buildEnrollmentClassList();
+  openModal('modal-add-student');
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
+
+function openClassAssignment(classId, classCode) {
+  document.getElementById('assign-class-title').textContent = classCode;
+  const form = document.getElementById('assign-class-form');
+  form.action = `/administrative-classes/${encodeURIComponent(classId)}/assign-students`;
+  const list = document.getElementById('assign-student-list');
+  list.replaceChildren();
+  studentAssignments.forEach(student => {
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:13px;';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = 'student_ids';
+    checkbox.value = student.id;
+    checkbox.checked = student.class_id === classId;
+    const text = document.createElement('span');
+    text.textContent = `${student.code} · ${student.name}${student.class_id && student.class_id !== classId ? ' · sẽ chuyển từ lớp hiện tại' : ''}`;
+    label.append(checkbox, text);
+    list.append(label);
+  });
+  document.getElementById('assign-all-students').checked = false;
+  openModal('modal-assign-class-students');
+}
+
+function toggleAssignAll(checked) {
+  document.querySelectorAll('#assign-student-list input[name="student_ids"]').forEach(input => input.checked = checked);
+}
+
+function chooseEnrollmentClass(classId) {
+  const adminClass = classRosters.find(item => item.id === classId);
+  if (!adminClass) return;
+  selectedEnrollClassId = adminClass.id;
+  document.getElementById('enroll-class-heading').textContent = `${adminClass.code} · ${adminClass.program}`;
+  document.getElementById('enroll-class-step').style.display = 'none';
+  document.getElementById('enroll-student-step').style.display = 'block';
+  const list = document.getElementById('enroll-student-list');
+  list.replaceChildren();
+  if (!adminClass.students.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state-card';
+    empty.textContent = 'Lớp chuyên ngành này chưa có sinh viên. Hãy xếp sinh viên vào lớp trước.';
+    list.append(empty);
+  }
+  adminClass.students.forEach(student => {
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:13px;';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'enroll-student-checkbox';
+    checkbox.value = student.id;
+    checkbox.disabled = student.already_enrolled;
+    checkbox.checked = student.already_enrolled;
+    checkbox.addEventListener('change', updateEnrollSelection);
+    const text = document.createElement('span');
+    text.textContent = `${student.code} · ${student.name}${student.already_enrolled ? ' · Đã có trong lớp học phần' : ''}`;
+    label.append(checkbox, text);
+    list.append(label);
+  });
+  document.getElementById('enroll-select-all').checked = false;
+  updateEnrollSelection();
+}
+
+function backToAdminClasses() {
+  selectedEnrollClassId = '';
+  document.getElementById('enroll-class-step').style.display = 'block';
+  document.getElementById('enroll-student-step').style.display = 'none';
+  updateEnrollSelection();
+}
+
+function toggleEnrollAll(checked) {
+  document.querySelectorAll('.enroll-student-checkbox:not(:disabled)').forEach(input => input.checked = checked);
+  updateEnrollSelection();
+}
+
+function updateEnrollSelection() {
+  const selected = document.querySelectorAll('.enroll-student-checkbox:checked:not(:disabled)').length;
+  const button = document.getElementById('btn-submit-enroll');
+  button.disabled = selected === 0;
+  button.querySelector('span').textContent = selected ? `Thêm ${selected} sinh viên đã chọn` : 'Chọn sinh viên để tiếp tục';
+}
+
+function buildEnrollmentClassList() {
+  const list = document.getElementById('enroll-class-list');
+  list.replaceChildren();
+  if (!classRosters.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state-card';
+    empty.textContent = 'Chưa có lớp chuyên ngành. Hãy tạo lớp và xếp sinh viên trước khi ghi danh.';
+    list.append(empty);
+    return;
+  }
+  classRosters.forEach(adminClass => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-outline';
+    button.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:12px;text-align:left;';
+    const label = document.createElement('span');
+    label.textContent = `${adminClass.code} · ${adminClass.program}`;
+    const count = document.createElement('span');
+    count.className = 'tab-counter-badge';
+    count.textContent = `${adminClass.students.length} SV`;
+    button.append(label, count);
+    button.addEventListener('click', () => chooseEnrollmentClass(adminClass.id));
+    list.append(button);
+  });
+}
+buildEnrollmentClassList();
+
+function submitEnrollStudent(e) {
+  e.preventDefault();
+  const sectionId = "{{ selected_section.id if selected_section else '' }}";
+  if (!sectionId) {
+    alert('Vui lòng chọn lớp học phần trước!');
+    return;
+  }
+
+  const studentIds = [...document.querySelectorAll('.enroll-student-checkbox:checked:not(:disabled)')].map(input => input.value);
+  const labGroup = document.getElementById('enroll_lab_group').value;
+
+  if (!selectedEnrollClassId || !studentIds.length) {
+    alert('Vui lòng chọn lớp chuyên ngành và ít nhất một sinh viên.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-submit-enroll');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang ghi danh...';
+
+  fetch(`/api/sections/${sectionId}/enroll`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      administrative_class_id: selectedEnrollClassId,
+      student_user_ids: studentIds,
+      lab_group: labGroup
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Xác nhận thêm sinh viên vào lớp';
+    if (data.status === 'success' || data.status === 'warning') {
+      showToast(data.message);
+      closeModal('modal-add-student');
+      setTimeout(() => window.location.reload(), 600);
+    } else {
+      alert(data.message || 'Lỗi khi ghi danh sinh viên');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Xác nhận thêm sinh viên vào lớp';
+    alert('Lỗi kết nối máy chủ');
+  });
+}
+
+function unenrollStudent(sectionId, studentId, studentName) {
+  if (!confirm(`Bạn có chắc chắn muốn xóa sinh viên ${studentName} khỏi lớp học phần này?`)) return;
+
+  fetch(`/api/sections/${sectionId}/unenroll`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ student_user_id: studentId })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success') {
+      showToast(data.message);
+      setTimeout(() => window.location.reload(), 500);
+    } else {
+      alert(data.message || 'Lỗi khi xóa sinh viên');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert('Lỗi kết nối máy chủ');
+  });
+}
+
+function submitCreateSection(e) {
+  e.preventDefault();
+  const courseId = document.getElementById('sec_course_id').value;
+  const sectionCode = document.getElementById('sec_code').value.trim();
+  const displayName = document.getElementById('sec_display_name').value.trim();
+  const maxCapacity = document.getElementById('sec_capacity').value;
+  const dayOfWeek = document.getElementById('sec_day').value.trim();
+  const physicalRoom = document.getElementById('sec_room').value.trim();
+
+  const btn = document.getElementById('btn-submit-section');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tạo...';
+
+  fetch('/api/sections/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      course_id: courseId,
+      section_code: sectionCode,
+      display_name: displayName,
+      max_capacity: maxCapacity,
+      day_of_week: dayOfWeek,
+      physical_room: physicalRoom
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-save"></i> Xác nhận tạo lớp học phần';
+    if (data.status === 'success') {
+      showToast(data.message);
+      closeModal('modal-create-section');
+      setTimeout(() => {
+        window.location.href = `{{ url_for('students.view_students') }}?section_id=${data.section_id}`;
+      }, 600);
+    } else {
+      alert(data.message || 'Lỗi khi tạo lớp học phần');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-save"></i> Xác nhận tạo lớp học phần';
+    alert('Lỗi kết nối máy chủ');
+  });
+}
+</script>
+{% endblock %}

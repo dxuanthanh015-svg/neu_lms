@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}403 - Không Có Quyền Truy Cập | NEU LMS{% endblock %}
+
+{% block content %}
+<div style="min-height: 60vh; display: flex; align-items: center; justify-content: center; padding: 40px 20px;">
+  <div style="max-width: 540px; width: 100%; background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 40px 32px; text-align: center; box-shadow: var(--shadow-md);">
+    
+    <div style="width: 72px; height: 72px; border-radius: 50%; background: var(--danger-bg); border: 2px solid var(--danger-border); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; color: var(--danger); font-size: 32px;">
+      <i class="fa-solid fa-ban"></i>
+    </div>
+
+    <span class="badge-code" style="background-color: var(--danger-bg); color: var(--danger); font-size: 13px; padding: 4px 10px; margin-bottom: 12px; display: inline-block;">
+      MÃ LỖI: HTTP 403 FORBIDDEN
+    </span>
+
+    <h1 style="font-size: 22px; font-weight: 800; color: var(--text-main); margin-bottom: 10px;">
+      Từ Chối Quyền Truy Cập
+    </h1>
+
+    <p style="font-size: 14px; color: var(--text-body); line-height: 1.6; margin-bottom: 20px;">
+      Bạn đang đăng nhập với vai trò 
+      <strong style="color: var(--primary);">
+        {% if current_user.role == 'STUDENT' %}
+          Sinh viên ({{ current_user.full_name }})
+        {% elif current_user.role == 'LECTURER' %}
+          Giảng viên ({{ current_user.full_name }})
+        {% elif current_user.role == 'ACADEMIC_ADMIN' %}
+          Quản trị viên / Quản lý ({{ current_user.full_name }})
+        {% else %}
+          {{ current_user.role }}
+        {% endif %}
+      </strong>.
+      Phân hệ này được thiết lập quyền riêng cho:
+      <strong style="color: var(--danger);">
+        {% for r in allowed_roles %}
+          {% if r == 'ACADEMIC_ADMIN' %}Quản lý Đào tạo / Admin{% elif r == 'LECTURER' %}Giảng viên{% elif r == 'STUDENT' %}Sinh viên{% else %}{{ r }}{% endif %}{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </strong>.
+    </p>
+
+    <div style="background-color: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 14px; font-size: 12px; color: var(--text-muted); margin-bottom: 24px; text-align: left;">
+      <i class="fa-solid fa-shield-halved" style="color: var(--primary); margin-right: 6px;"></i>
+      <strong>Chính sách Bảo mật RBAC LMS M10:</strong> Hệ thống tự động ngăn chặn truy cập trái phép và bảo vệ an toàn ngân hàng khảo thí, dữ liệu chuyên cần và hồ sơ thẩm định.
+    </div>
+
+    <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+      <a href="{{ url_for('curriculum.view_curriculum') }}" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-house"></i> Về trang chủ phân hệ
+      </a>
+      <a href="{{ url_for('auth.login') }}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-arrow-right-arrow-left"></i> Đổi tài khoản khác
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

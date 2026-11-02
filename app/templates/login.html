@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .login-page-wrapper {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-page-wrapper::before {
+      content: "";
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, rgba(37, 99, 235, 0) 70%);
+      top: -100px;
+      left: -100px;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .login-page-wrapper::after {
+      content: "";
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.12) 0%, rgba(124, 58, 237, 0) 70%);
+      bottom: -100px;
+      right: -100px;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 960px;
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      position: relative;
+      z-index: 10;
+    }
+
+    @media (max-width: 860px) {
+      .login-container {
+        grid-template-columns: 1fr;
+      }
+
+      .login-brand-panel {
+        display: none !important;
+      }
+    }
+
+    .login-brand-panel {
+      background: linear-gradient(145deg, #1e3a8a 0%, #2563eb 100%);
+      color: #ffffff;
+      padding: 48px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .login-brand-panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E");
+      opacity: 0.6;
+    }
+
+    .login-form-panel {
+      padding: 44px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: #ffffff;
+    }
+
+    .role-select-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      background: #f1f5f9;
+      padding: 5px;
+      border-radius: var(--radius-md);
+      margin-bottom: 24px;
+    }
+
+    .role-tab-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 4px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 11px;
+      transition: all 0.2s ease;
+      gap: 4px;
+      text-align: center;
+    }
+
+    .role-tab-btn i {
+      font-size: 15px;
+    }
+
+    .role-tab-btn.active {
+      background: #ffffff;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .role-tab-btn.active.role-student {
+      color: #059669;
+    }
+
+    .role-tab-btn.active.role-lecturer {
+      color: #7c3aed;
+    }
+
+    .role-tab-btn.active.role-academic-admin {
+      color: #d97706;
+    }
+
+    .role-tab-btn.active.role-admin {
+      color: #dc2626;
+    }
+
+    .form-group-custom {
+      margin-bottom: 20px;
+    }
+
+    .form-group-custom label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .input-with-icon {
+      position: relative;
+    }
+
+    .input-with-icon i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-subtle);
+      font-size: 14px;
+    }
+
+    .input-with-icon input {
+      width: 100%;
+      height: 44px;
+      padding: 0 14px 0 38px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--text-main);
+      transition: border-color 0.2s;
+    }
+
+    .input-with-icon input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .alert-box {
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-danger {
+      background-color: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: var(--danger);
+    }
+
+    .alert-warning {
+      background-color: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      color: var(--warning);
+    }
+
+    .alert-success {
+      background-color: var(--success-bg);
+      border: 1px solid var(--success-border);
+      color: var(--success);
+    }
+
+    .alert-info {
+      background-color: var(--primary-light);
+      border: 1px solid var(--primary-border);
+      color: var(--primary-dark);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-page-wrapper">
+    <div class="login-container">
+
+      <!-- LEFT: BRAND & SECURITY INTRO -->
+      <div class="login-brand-panel">
+        <div style="position: relative; z-index: 2;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+            <img src="{{ url_for('static', filename='images/neu-logo.png') }}" alt="Logo Đại học Kinh tế Quốc dân"
+              style="width: 60px; height: 60px; object-fit: cover; border-radius: 50%; background: #fff;">
+            <div>
+              <div style="font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">NEU LMS</div>
+              <div style="font-size: 11px; font-weight: 700; opacity: 0.85; letter-spacing: .4px;">ĐẠI HỌC KINH TẾ QUỐC
+                DÂN</div>
+
+            </div>
+          </div>
+
+          <h2 style="font-size: 22px; font-weight: 800; line-height: 1.3; margin-bottom: 14px;">
+            Hệ Thống Xác Thực & Phân Quyền Vai Trò
+          </h2>
+          <p style="font-size: 13px; opacity: 0.9; line-height: 1.6; margin-bottom: 24px;">
+            Hỗ trợ 4 nhóm luồng nghiệp vụ độc lập theo đúng thẩm quyền: Sinh viên, Giảng viên, Cán bộ quản lý và Quản
+            trị viên hệ thống. Toàn bộ dữ liệu được quản lý đồng bộ trong CSDL MySQL.
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 12px; font-size: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i class="fa-solid fa-user-graduate" style="color: #6ee7b7;"></i>
+              <span><strong>Sinh viên:</strong> Học trực tuyến, nộp bài, tra cứu học liệu & hỗ trợ</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i class="fa-solid fa-chalkboard-user" style="color: #c4b5fd;"></i>
+              <span><strong>Giảng viên:</strong> Quản lý môn học, soạn học liệu, AI khảo thí & chấm điểm</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i class="fa-solid fa-clipboard-check" style="color: #fde68a;"></i>
+              <span><strong>Cán bộ quản lý:</strong> Phê duyệt học liệu/câu hỏi, giám sát đào tạo</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i class="fa-solid fa-shield-halved" style="color: #fca5a5;"></i>
+              <span><strong>Quản trị viên:</strong> Quản lý tài khoản, phân quyền & vận hành CSDL</span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          style="position: relative; z-index: 2; font-size: 11px; opacity: 0.75; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 16px;">
+        </div>
+      </div>
+
+      <!-- RIGHT: LOGIN FORM & ROLE SELECTOR -->
+      <div class="login-form-panel">
+        <div style="margin-bottom: 20px;">
+          <h1 style="font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">
+            Đăng nhập tài khoản
+          </h1>
+          <p style="font-size: 13px; color: var(--text-muted);">
+            Vui lòng chọn vai trò và nhập thông tin tài khoản được cấp trong hệ thống.
+          </p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert-box alert-{{ category }}">
+          <i class="fa-solid fa-circle-info"></i>
+          <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <!-- ROLE TABS SELECTOR (4 ROLES) -->
+        <div class="role-select-tabs">
+          <a href="{{ url_for('auth.login', role='STUDENT', next=next_url) }}"
+            class="role-tab-btn role-student {% if selected_role == 'STUDENT' %}active{% endif %}">
+            <i class="fa-solid fa-user-graduate"></i>
+            <span>Sinh viên</span>
+          </a>
+          <a href="{{ url_for('auth.login', role='LECTURER', next=next_url) }}"
+            class="role-tab-btn role-lecturer {% if selected_role == 'LECTURER' %}active{% endif %}">
+            <i class="fa-solid fa-chalkboard-user"></i>
+            <span>Giảng viên</span>
+          </a>
+          <a href="{{ url_for('auth.login', role='ACADEMIC_ADMIN', next=next_url) }}"
+            class="role-tab-btn role-academic-admin {% if selected_role == 'ACADEMIC_ADMIN' %}active{% endif %}">
+            <i class="fa-solid fa-clipboard-check"></i>
+            <span>CB Quản lý</span>
+          </a>
+          <a href="{{ url_for('auth.login', role='ADMIN', next=next_url) }}"
+            class="role-tab-btn role-admin {% if selected_role == 'ADMIN' %}active{% endif %}">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Quản trị viên</span>
+          </a>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <form method="POST" action="{{ url_for('auth.login', next=next_url) }}">
+          <input type="hidden" name="role_choice" value="{{ selected_role }}">
+
+          <div class="form-group-custom">
+            <label>
+              {% if selected_role == 'STUDENT' %}
+              Mã sinh viên (MSSV) hoặc Email học viện
+              {% elif selected_role == 'LECTURER' %}
+              Mã giảng viên (MSGV) hoặc Email
+              {% elif selected_role == 'ACADEMIC_ADMIN' %}
+              Mã cán bộ quản lý hoặc Email
+              {% else %}
+              Mã Quản trị viên (ADMIN) hoặc Email
+              {% endif %}
+            </label>
+            <div class="input-with-icon">
+              <i class="fa-regular fa-user"></i>
+              <input type="text" name="identifier" required
+                placeholder="{% if selected_role == 'STUDENT' %}Nhập MSSV hoặc email NEU{% elif selected_role == 'LECTURER' %}Nhập mã giảng viên hoặc email NEU{% elif selected_role == 'ACADEMIC_ADMIN' %}Nhập mã cán bộ hoặc email NEU{% else %}Nhập mã quản trị hoặc email{% endif %}"
+                autofocus>
+            </div>
+          </div>
+
+          <div class="form-group-custom">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="margin-bottom: 0;">Mật khẩu</label>
+            </div>
+            <div class="input-with-icon">
+              <i class="fa-solid fa-lock"></i>
+              <input type="password" name="password" placeholder="Nhập mật khẩu của bạn..." value="123456" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary"
+            style="width: 100%; height: 44px; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <i class="fa-solid fa-right-to-bracket"></i>
+            <span>Đăng nhập với tư cách {% if selected_role == 'STUDENT' %}Sinh viên{% elif selected_role == 'LECTURER'
+              %}Giảng viên{% elif selected_role == 'ACADEMIC_ADMIN' %}Cán bộ quản lý{% else %}Quản trị viên{% endif
+              %}</span>
+          </button>
+        </form>
+
+        <div
+          style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-light); font-size: 12px; color: var(--text-muted); text-align: center;">
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</body>
+
+</html>
